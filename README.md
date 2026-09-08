@@ -35,6 +35,8 @@ The application is intentionally local-only. It is not registered with a hosting
 8. Open **Walkthrough** to edit headings, explanations, stages and focus. Reorder cards, choose one directly, or play through them at five-second intervals. Regenerating cards asks before replacing existing work.
 9. **Export** either view as a light/dark standalone SVG, or an editable Studio scenario. Import the Studio file from the home screen to create an independent copy. **Export all diagrams** downloads a single ZIP: in a scenario it includes both views in the selected presentation, in light and dark themes; from the workspace header it includes every scenario using its own mode. Numbered scenario folders prevent filename collisions. Unavailable diagrams are listed in the dialog and `EXPORT-NOTES.txt`; an empty archive is never downloaded.
 
+Use **Appearance** in the header to choose **Light**, **Dark**, or **System**. The choice is saved separately from the workspace and applies to live diagrams as well as the workbench. Export controls continue to offer both diagram themes.
+
 ## Authoring and persistence
 
 The Studio model is the saved source of truth. Mutable display names never determine identity. Array order determines interaction, boundary and walkthrough presentation order. Boundary order fields are also maintained by the editor.

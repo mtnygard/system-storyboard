@@ -132,16 +132,20 @@ it("creates a scenario, participants and a five-step flow entirely through the i
   ).toBeGreaterThan(0);
 });
 it("starts static for reduced-motion users", async () => {
-  vi.mocked(window.matchMedia).mockReturnValueOnce({
-    matches: true,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  } as unknown as MediaQueryList);
+  const original = window.matchMedia;
+  window.matchMedia = vi
+    .fn()
+    .mockImplementation((query) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: /Order to SAP/ }));
   expect(
     screen.getByRole("button", { name: "Play traffic" }),
   ).toBeInTheDocument();
+  window.matchMedia = original;
 });
 
 it("offers scope-aware bulk export from the workspace and scenario, keeping the scenario file after diagrams", async () => {

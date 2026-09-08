@@ -1,3 +1,5 @@
+import { AppearanceControl } from "./components/AppearanceControl";
+import { useAppearance } from "./components/useAppearance";
 import {
   useCallback,
   useEffect,
@@ -89,6 +91,7 @@ function Modal({
   );
 }
 export default function App() {
+  const { appearance, setAppearance, theme } = useAppearance();
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<DiagramExportResult>();
   const [loaded] = useState(loadWorkspace);
@@ -301,6 +304,7 @@ export default function App() {
           <span className="alpha">ALPHA</span>
         </button>
         <div className="header-actions">
+          <AppearanceControl value={appearance} onChange={setAppearance} />
           <span className={`save-status ${saved ? "" : "unsaved"}`}>
             <span />
             {saved
@@ -480,6 +484,7 @@ export default function App() {
               </span>
             </div>
             <Preview
+              theme={theme}
               key={scenario.id}
               scenario={scenario}
               catalog={workspace.participants}

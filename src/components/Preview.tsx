@@ -6,6 +6,7 @@ import { compileScenario, renderPreview } from "../adapter/compiler";
 import type { Scenario, Participant, State, Step } from "../domain/model";
 export type PreviewSnapshot = { graph: GraphDoc; state: State };
 export function Preview({
+  theme,
   scenario,
   catalog,
   state,
@@ -15,6 +16,7 @@ export function Preview({
   step,
   onSnapshot,
 }: {
+  theme: "light" | "dark";
   scenario: Scenario;
   catalog: Participant[];
   state: State;
@@ -34,7 +36,13 @@ export function Preview({
   const [zoom, setZoom] = useState(false);
   const svgRef = useRef<HTMLDivElement>(null);
   const last = useRef<
-    { rendered: RenderedSvg; state: State; lens: string } | undefined
+    | {
+        rendered: RenderedSvg;
+        graph: GraphDoc;
+        state: State;
+        lens: "architecture" | "data-flow";
+      }
+    | undefined
   >(undefined);
   useEffect(() => {
     if (step)
@@ -47,14 +55,14 @@ export function Preview({
   const rendering = useMemo(() => {
     if (!result.ok) return undefined;
     try {
-      return { value: renderPreview(result.graph, lens) };
+      return { value: renderPreview(result.graph, lens, theme) };
     } catch {
       return {
         error:
           "This arrangement could not be drawn. Try fewer participants or review the architecture checks.",
       };
     }
-  }, [result, lens]);
+  }, [result, lens, theme]);
   useEffect(
     () =>
       onSnapshot(
@@ -64,14 +72,28 @@ export function Preview({
       ),
     [result, state, rendering, onSnapshot],
   );
-  if (rendering?.value)
-    last.current = { rendered: rendering.value, state, lens };
+  if (rendering?.value && result.ok)
+    last.current = {
+      rendered: rendering.value,
+      graph: result.graph,
+      state,
+      lens,
+    };
   const stale = !result.ok || !!rendering?.error;
-  const shown = stale
+  const source = stale
     ? last.current
     : rendering?.value
-      ? { rendered: rendering.value, state, lens }
+      ? last.current
       : undefined;
+  const shown = useMemo(() => {
+    if (!source || source.rendered.theme === theme) return source;
+    try {
+      const rendered = renderPreview(source.graph, source.lens, theme);
+      return rendered ? { ...source, rendered } : source;
+    } catch {
+      return source;
+    }
+  }, [source, theme]);
   useEffect(() => {
     const svg = svgRef.current?.querySelector("svg");
     if (!svg) return;
