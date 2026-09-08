@@ -113,6 +113,25 @@ export function importScenario(raw: string, w: Workspace): Workspace {
       fromParticipantId:
         mapping.get(i.fromParticipantId) || i.fromParticipantId,
       toParticipantId: mapping.get(i.toParticipantId) || i.toParticipantId,
+      targetOverrides: i.targetOverrides
+        ? {
+            ...i.targetOverrides,
+            ...(i.targetOverrides.fromParticipantId === undefined
+              ? {}
+              : {
+                  fromParticipantId:
+                    mapping.get(i.targetOverrides.fromParticipantId) ||
+                    i.targetOverrides.fromParticipantId,
+                }),
+            ...(i.targetOverrides.toParticipantId === undefined
+              ? {}
+              : {
+                  toParticipantId:
+                    mapping.get(i.targetOverrides.toParticipantId) ||
+                    i.targetOverrides.toParticipantId,
+                }),
+          }
+        : undefined,
     })),
     walkthroughSteps: s.walkthroughSteps.map((step) => ({
       ...step,

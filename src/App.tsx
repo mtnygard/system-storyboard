@@ -1,3 +1,4 @@
+import { diagramHtml } from "./adapter/diagram-html";
 import { AppearanceControl } from "./components/AppearanceControl";
 import { useAppearance } from "./components/useAppearance";
 import {
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 import {
   exportDiagramArchive,
+  scenarioDiagramVariants,
   type DiagramExportResult,
 } from "./adapter/diagram-export";
 import { Home } from "./components/Home";
@@ -103,6 +105,7 @@ export default function App() {
   const [activeId, setActiveId] = useState<string>();
   const [section, setSection] = useState<Section>("Interactions");
   const [selected, setSelected] = useState<string>();
+  const [editingState, setEditingState] = useState<State>("transition");
   const [state, setState] = useState<State>("transition");
   const [modal, setModal] = useState<
     "export" | "reset" | "clear" | "create" | "csv" | null
@@ -172,6 +175,7 @@ export default function App() {
   function open(s: Scenario) {
     setActiveId(s.id);
     setState(s.mode);
+    setEditingState(s.mode);
     setSelected(undefined);
     setActiveStep(-1);
     setTourPlaying(false);
@@ -235,18 +239,30 @@ export default function App() {
   const safeName = (scenario?.name || "scenario")
     .replace(/[^a-z0-9]+/gi, "-")
     .toLowerCase();
-  const exportSvg = (
+  const exportDiagram = (
     theme: "light" | "dark",
     lens: "architecture" | "data-flow",
+    format: "html" | "svg",
   ) => {
     if (!snapshot) return;
     try {
       const r = renderPreview(snapshot.graph, lens, theme);
       if (r) {
         download(
-          `${safeName}-${state}-${lens}-${theme}.svg`,
-          r.svg,
-          "image/svg+xml",
+          `${safeName}-${state}-${lens}-${theme}.${format}`,
+          format === "svg"
+            ? r.svg
+            : diagramHtml({
+                title: scenario?.name || "Scenario",
+                state,
+                view: lens === "architecture" ? "Architecture" : "Sequence",
+                theme,
+                svg: r.svg,
+                variants: scenario
+                  ? scenarioDiagramVariants(scenario, workspace.participants)
+                  : undefined,
+              }),
+          format === "svg" ? "image/svg+xml" : "text/html",
         );
         setMessage("Standalone diagram exported.");
       }
@@ -603,6 +619,9 @@ export default function App() {
             )}
             {section === "Interactions" && (
               <InteractionTable
+                key={`interactions-${scenario.id}`}
+                editingState={editingState}
+                onEditingState={setEditingState}
                 scenario={scenario}
                 catalog={workspace.participants}
                 selected={selected}
@@ -688,6 +707,9 @@ export default function App() {
             )}
           </main>
           <Inspector
+            editingState={
+              scenario.mode === "transition" ? editingState : scenario.mode
+            }
             scenario={scenario}
             catalog={workspace.participants}
             selected={selected}
@@ -851,14 +873,15 @@ export default function App() {
           <p>
             {scenario ? (
               <>
-                Download architecture and sequence diagrams for the{" "}
-                <strong>{state}</strong> presentation.
+                Download architecture and sequence diagrams with interactive
+                HTML viewers. Export all includes every available presentation
+                state.
               </>
             ) : (
               <>
                 Download architecture and sequence diagrams from all{" "}
-                {workspace.scenarios.length} scenarios. Each scenario uses its
-                own current, target, or transition mode.
+                {workspace.scenarios.length} scenarios, including Current,
+                Target, and Transition views for transition scenarios.
               </>
             )}
           </p>
@@ -872,7 +895,7 @@ export default function App() {
                 {exporting ? "Preparing diagrams…" : "Export all diagrams"}
               </strong>
               <small>
-                One ZIP · Light and dark SVGs
+                One ZIP · HTML pages + SVGs · Light and dark themes
                 {!scenario && " · Organized by scenario"}
               </small>
             </span>
@@ -909,24 +932,27 @@ export default function App() {
           {scenario && (
             <>
               <h3>Standalone diagrams</h3>
-              {(["architecture", "data-flow"] as const).map((lens) => (
-                <div className="export-row" key={lens}>
-                  <span>
-                    {lens === "architecture" ? "Architecture" : "Sequence"}
-                  </span>
-                  {(["light", "dark"] as const).map((theme) => (
-                    <button
-                      className="secondary small"
-                      key={theme}
-                      disabled={!snapshot?.graph.lenses.includes(lens)}
-                      onClick={() => exportSvg(theme, lens)}
-                    >
-                      {theme === "light" ? "Light" : "Dark"} SVG
-                      <Download size={14} />
-                    </button>
-                  ))}
-                </div>
-              ))}
+              {(["architecture", "data-flow"] as const).map((lens) =>
+                (["light", "dark"] as const).map((theme) => (
+                  <div className="export-row" key={`${lens}-${theme}`}>
+                    <span>
+                      {lens === "architecture" ? "Architecture" : "Sequence"} ·{" "}
+                      {theme === "light" ? "Light" : "Dark"}
+                    </span>
+                    {(["html", "svg"] as const).map((format) => (
+                      <button
+                        className="secondary small"
+                        key={format}
+                        aria-label={`Export ${theme} ${lens === "architecture" ? "architecture" : "sequence"} as ${format.toUpperCase()}`}
+                        disabled={!snapshot?.graph.lenses.includes(lens)}
+                        onClick={() => exportDiagram(theme, lens, format)}
+                      >
+                        {format.toUpperCase()} <Download size={14} />
+                      </button>
+                    ))}
+                  </div>
+                )),
+              )}
               <h3>Editable scenario</h3>
               <button
                 className="export-option"

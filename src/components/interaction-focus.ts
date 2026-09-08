@@ -4,13 +4,11 @@ import { missingDetails } from "../domain/drafts";
  * Ordinary row selection must not steal focus from inline table editing. */
 export function focusInteractionDetail(interaction: Interaction) {
   const field = missingDetails(interaction)[0] || "action";
-  setTimeout(
-    () =>
-      document
-        .querySelector<HTMLElement>(
-          `[data-interaction-detail="${field}"] input, [data-interaction-detail="${field}"] select`,
-        )
-        ?.focus(),
-    0,
-  );
+  setTimeout(() => {
+    const input = document.querySelector<HTMLElement>(
+      `[data-interaction-detail="${field}"] input, [data-interaction-detail="${field}"] select`,
+    );
+    input?.scrollIntoView?.({ block: "center", inline: "nearest" });
+    input?.focus();
+  }, 0);
 }

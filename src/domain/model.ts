@@ -68,7 +68,7 @@ export const PlacementSchema = z.object({
   subtitle: name.default(""),
   badges: z.array(name).max(6).default([]),
 });
-export const InteractionSchema = z.object({
+const BaseInteractionSchema = z.object({
   id,
   fromParticipantId: z.string().max(100),
   toParticipantId: z.string().max(100),
@@ -87,6 +87,16 @@ export const InteractionSchema = z.object({
   ...presence,
   animated: z.boolean(),
   hero: z.boolean(),
+});
+export const InteractionSchema = BaseInteractionSchema.extend({
+  targetOverrides: BaseInteractionSchema.omit({
+    id: true,
+    current: true,
+    target: true,
+    changed: true,
+  })
+    .partial()
+    .optional(),
 });
 export const StepSchema = z.object({
   id,

@@ -1,6 +1,13 @@
+import { OverrideIcon } from "./OverrideIcon";
+import {
+  effectiveInteraction,
+  editInteraction,
+  resetOverride,
+  type OverrideKey,
+} from "../domain/interaction-overrides";
 import { focusInteractionDetail } from "./interaction-focus";
 import { useState } from "react";
-import { isPendingDraft, missingDetails } from "../domain/drafts";
+import { missingDetails } from "../domain/drafts";
 import { X, SlidersHorizontal } from "lucide-react";
 import {
   participantTypes,
@@ -11,10 +18,12 @@ import {
   type Scenario,
   type Participant,
   type Interaction,
+  type State,
 } from "../domain/model";
 import { Field, TextField, Presence, Toggle } from "./Controls";
 export function Inspector({
   scenario,
+  editingState = scenario.mode,
   catalog,
   selected,
   onChange,
@@ -23,6 +32,7 @@ export function Inspector({
   onSelect,
 }: {
   scenario: Scenario;
+  editingState?: State;
   catalog: Participant[];
   selected?: string;
   onChange: (s: Scenario) => void;
@@ -31,7 +41,30 @@ export function Inspector({
   onSelect: (id: string) => void;
 }) {
   const [participantName, setParticipantName] = useState("");
-  const interaction = scenario.interactions.find((i) => i.id === selected);
+  const rawInteraction = scenario.interactions.find((i) => i.id === selected);
+  const interaction =
+    rawInteraction && effectiveInteraction(rawInteraction, editingState);
+  const icon = (field: OverrideKey) =>
+    rawInteraction && (
+      <OverrideIcon
+        interaction={rawInteraction}
+        field={field}
+        state={editingState}
+        displayValue={
+          field === "fromParticipantId" || field === "toParticipantId"
+            ? catalog.find((p) => p.id === rawInteraction[field])?.name
+            : undefined
+        }
+        onReset={() =>
+          onChange({
+            ...scenario,
+            interactions: scenario.interactions.map((i) =>
+              i.id === selected ? resetOverride(i, field) : i,
+            ),
+          })
+        }
+      />
+    );
   const placement = scenario.participantPlacements.find(
     (p) => p.participantId === selected,
   );
@@ -50,20 +83,26 @@ export function Inspector({
       participantPlacements: placements,
       interactions: scenario.interactions.map((i) =>
         i.id === selected
-          ? { ...i, ...patch }
+          ? editInteraction(i, patch, editingState)
           : patch.hero
-            ? { ...i, hero: false }
+            ? editInteraction(i, { hero: false }, editingState)
             : i,
       ),
     });
   };
-  const pending = scenario.interactions.filter(isPendingDraft);
+  const pending = scenario.interactions
+    .filter((i) => editingState === "transition" || i[editingState])
+    .map((i) => effectiveInteraction(i, editingState))
+    .filter((i) => missingDetails(i).length > 0);
   function nextPending() {
     const index = scenario.interactions.findIndex((i) => i.id === selected);
     const next = [
       ...scenario.interactions.slice(index + 1),
       ...scenario.interactions.slice(0, index),
-    ].find(isPendingDraft);
+    ]
+      .filter((i) => editingState === "transition" || i[editingState])
+      .map((i) => effectiveInteraction(i, editingState))
+      .find((i) => missingDetails(i).length > 0);
     if (next) {
       onSelect(next.id);
       focusInteractionDetail(next);
@@ -72,9 +111,9 @@ export function Inspector({
   function continueStory(kind: "reply" | "onward" | "self") {
     if (!interaction) return;
     const next = {
-      ...newInteraction(scenario.mode),
-      current: interaction.current,
-      target: interaction.target,
+      ...newInteraction(editingState),
+      current: editingState === "target" ? false : interaction.current,
+      target: editingState === "current" ? false : interaction.target,
       fromParticipantId: interaction.toParticipantId,
       toParticipantId:
         kind === "reply"
@@ -90,7 +129,11 @@ export function Inspector({
             : ("not specified" as const),
     };
     const interactions = [...scenario.interactions];
-    interactions.splice(interactions.indexOf(interaction) + 1, 0, next);
+    interactions.splice(
+      interactions.findIndex((i) => i.id === interaction.id) + 1,
+      0,
+      next,
+    );
     onChange({ ...scenario, interactions });
     onSelect(next.id);
     focusInteractionDetail(next);
@@ -122,12 +165,21 @@ export function Inspector({
         <>
           <h2>{interaction.action || "New interaction"}</h2>
           <p className="subtle">
-            Step {scenario.interactions.indexOf(interaction) + 1} ·{" "}
-            {interaction.pattern}
+            Editing{" "}
+            {editingState === "transition"
+              ? "current / shared baseline"
+              : editingState}{" "}
+            fields
+          </p>
+          <p className="subtle">
+            Step{" "}
+            {scenario.interactions.findIndex((i) => i.id === interaction.id) +
+              1}{" "}
+            · {interaction.pattern}
           </p>
           <div className="inspector-fields">
             <div className="completion-status">
-              {isPendingDraft(interaction)
+              {missingDetails(interaction).length > 0
                 ? `Needs ${missingDetails(interaction).join(", ")}`
                 : "Essential details complete"}
               <button
@@ -139,6 +191,7 @@ export function Inspector({
               </button>
             </div>
             <div data-interaction-detail="action">
+              {icon("action")}
               <TextField
                 label="Interaction action"
                 value={interaction.action}
@@ -157,6 +210,7 @@ export function Inspector({
                   key === "fromParticipantId" ? "sender" : "receiver"
                 }
               >
+                {icon(key)}
                 <Field label={label}>
                   <select
                     value={interaction[key]}
@@ -205,7 +259,9 @@ export function Inspector({
                       ),
                     ],
                     interactions: scenario.interactions.map((i) =>
-                      i === interaction ? { ...i, [key]: p.id } : i,
+                      i.id === interaction.id
+                        ? editInteraction(i, { [key]: p.id }, editingState)
+                        : i,
                     ),
                   });
                   setParticipantName("");
@@ -217,6 +273,7 @@ export function Inspector({
             </details>
             <div data-interaction-detail="pattern">
               {" "}
+              {icon("pattern")}
               <Field label="Interaction pattern">
                 <select
                   value={interaction.pattern}
@@ -232,11 +289,14 @@ export function Inspector({
                 </select>
               </Field>
             </div>
-            <TextField
-              label="Interaction technology"
-              value={interaction.technology}
-              onChange={(technology) => editI({ technology })}
-            />
+            <div className="override-field">
+              {icon("technology")}
+              <TextField
+                label="Interaction technology"
+                value={interaction.technology}
+                onChange={(technology) => editI({ technology })}
+              />
+            </div>
             <div className="continuation-actions">
               <span className="eyebrow">Continue this story</span>
               <button
@@ -264,16 +324,22 @@ export function Inspector({
               </button>
             </div>
             <Presence value={interaction} onChange={editI} />
-            <Toggle
-              label="Animate traffic"
-              checked={interaction.animated}
-              onChange={(animated) => editI({ animated })}
-            />
-            <Toggle
-              label="Principal interaction"
-              checked={interaction.hero}
-              onChange={(hero) => editI({ hero })}
-            />
+            <div className="override-field">
+              {icon("animated")}
+              <Toggle
+                label="Animate traffic"
+                checked={interaction.animated}
+                onChange={(animated) => editI({ animated })}
+              />
+            </div>
+            <div className="override-field">
+              {icon("hero")}
+              <Toggle
+                label="Principal interaction"
+                checked={interaction.hero}
+                onChange={(hero) => editI({ hero })}
+              />
+            </div>
             {(
               [
                 ["payload", "Payload or event"],
@@ -286,16 +352,18 @@ export function Inspector({
                 ["failure", "Failure & compensation"],
               ] as const
             ).map(([key, label]) => (
-              <TextField
-                key={key}
-                label={label}
-                value={interaction[key]}
-                onChange={(v) => editI({ [key]: v })}
-                multiline={key === "resilience" || key === "failure"}
-                maxLength={
-                  key === "resilience" || key === "failure" ? 2000 : 120
-                }
-              />
+              <div key={key} className="override-field">
+                {icon(key)}
+                <TextField
+                  label={label}
+                  value={interaction[key]}
+                  onChange={(v) => editI({ [key]: v })}
+                  multiline={key === "resilience" || key === "failure"}
+                  maxLength={
+                    key === "resilience" || key === "failure" ? 2000 : 120
+                  }
+                />
+              </div>
             ))}
           </div>
         </>

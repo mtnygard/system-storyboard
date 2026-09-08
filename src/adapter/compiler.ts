@@ -1,3 +1,4 @@
+import { projectInteractions } from "../domain/interaction-overrides";
 import { isPendingDraft } from "../domain/drafts";
 import { sequenceArchitectureTraffic } from "./architecture-timing";
 import {
@@ -103,7 +104,23 @@ export function compileScenario(
   catalog: Participant[],
   state: State,
 ): CompileResult {
-  const blockers = architectureChecks(s, catalog).filter((c) => c.blocking);
+  s = projectInteractions(s, state);
+  const checksScenario =
+    state === "transition"
+      ? s
+      : {
+          ...s,
+          interactions: s.interactions
+            .filter((i) => included(i, state))
+            .map((i) => ({
+              ...i,
+              current: state === "current",
+              target: state === "target",
+            })),
+        };
+  const blockers = architectureChecks(checksScenario, catalog).filter(
+    (c) => c.blocking,
+  );
   if (blockers.length)
     return { ok: false, messages: blockers.map((c) => c.message) };
   const placements = s.participantPlacements.filter((p) => included(p, state));

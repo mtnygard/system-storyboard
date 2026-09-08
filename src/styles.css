@@ -1828,3 +1828,79 @@ dialog h3 {
     padding-bottom: 10px;
   }
 }
+
+.interaction-scope {
+  display: block;
+  font-size: 11px;
+  padding: 4px 8px 0;
+  color: var(--text-muted, #869ca8);
+}
+
+.editing-help {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 8px 0 16px;
+}
+
+.override-control {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+.override-icon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  opacity: 0.7;
+}
+.override-icon.is-overridden {
+  opacity: 1;
+  color: #2186a1;
+}
+.override-tooltip {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  bottom: 100%;
+  left: 0;
+  min-width: 150px;
+  max-width: 260px;
+  padding: 6px 9px;
+  border-radius: 5px;
+  background: #182b35;
+  color: #fff;
+  font-size: 12px;
+  white-space: normal;
+}
+.override-control:hover .override-tooltip,
+.override-control:focus-within .override-tooltip {
+  display: block;
+}
+.override-field > .override-control {
+  float: right;
+}
+.interaction-table td:has(> .override-control) {
+  position: relative;
+  padding-right: 27px;
+}
+.interaction-table td > .override-control {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.inspector-fields [data-interaction-detail],
+.override-field {
+  position: relative;
+}
+.inspector-fields [data-interaction-detail] > .override-control,
+.override-field > .override-control {
+  position: absolute;
+  right: 0;
+  top: -4px;
+  z-index: 1;
+}
+.override-field > .field > span,
+.inspector-fields [data-interaction-detail] .field > span {
+  padding-right: 24px;
+}

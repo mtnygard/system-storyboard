@@ -6,6 +6,7 @@ import {
   newPlacement,
   type Participant,
   type Scenario,
+  type State,
 } from "../domain/model";
 import { Field } from "./Controls";
 
@@ -63,11 +64,13 @@ function ParticipantChoice({
 }
 export function QuickCapture({
   scenario,
+  captureState = scenario.mode,
   catalog,
   onChange,
   onCatalog,
 }: {
   scenario: Scenario;
+  captureState?: State;
   catalog: Participant[];
   onChange: (s: Scenario) => void;
   onCatalog: (p: Participant[], s?: Scenario) => void;
@@ -120,11 +123,11 @@ export function QuickCapture({
           newPlacement(
             participantId,
             scenario.boundaries[0]?.id || "",
-            scenario.mode,
+            captureState,
           ),
         );
     const interactions = actions.map((action) => ({
-      ...newInteraction(scenario.mode),
+      ...newInteraction(captureState),
       action,
       fromParticipantId: sender,
       toParticipantId: receiver,
@@ -140,7 +143,9 @@ export function QuickCapture({
     );
     input.current?.focus();
   }
-  const previous = scenario.interactions.at(-1);
+  const previous = scenario.interactions
+    .filter((i) => captureState === "transition" || i[captureState])
+    .at(-1);
   const suggestion = catalog.find((p) => p.id === previous?.toParticipantId);
   return (
     <div className="quick-capture">
@@ -226,9 +231,9 @@ export function QuickCapture({
         <div className="capture-footer">
           <small>
             Enter to capture · Shift+Enter for another line ·{" "}
-            {scenario.mode === "transition"
+            {captureState === "transition"
               ? "Both states"
-              : `${scenario.mode} state`}
+              : `${captureState} state`}
           </small>
           <button className="primary small" disabled={!text.trim()}>
             <Plus size={15} />

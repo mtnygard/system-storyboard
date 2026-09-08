@@ -1,12 +1,24 @@
+import { OverrideIcon } from "./OverrideIcon";
+import {
+  effectiveInteraction,
+  editInteraction,
+  resetOverride,
+  type OverrideKey,
+} from "../domain/interaction-overrides";
+import {
+  interactionsFor,
+  moveVisible,
+  populateTarget,
+} from "../domain/interaction-views";
 import { focusInteractionDetail } from "./interaction-focus";
 import { useState } from "react";
 import { QuickCapture } from "./QuickCapture";
-import { isPendingDraft, missingDetails } from "../domain/drafts";
+import { missingDetails } from "../domain/drafts";
 import { Copy, Star, Plus } from "lucide-react";
 import {
   newInteraction,
   patterns,
-  reorder,
+  type State,
   uid,
   type Scenario,
   type Participant,
@@ -15,6 +27,8 @@ import {
 import { OrderButtons, DeleteButton } from "./Controls";
 export function InteractionTable({
   scenario,
+  editingState: controlledState,
+  onEditingState,
   catalog,
   selected,
   onSelect,
@@ -22,6 +36,8 @@ export function InteractionTable({
   onCatalog,
 }: {
   scenario: Scenario;
+  editingState?: State;
+  onEditingState?: (state: State) => void;
   catalog: Participant[];
   selected?: string;
   onSelect: (id: string) => void;
@@ -29,18 +45,50 @@ export function InteractionTable({
   onCatalog: (p: Participant[], s?: Scenario) => void;
 }) {
   const [details, setDetails] = useState(false);
-  const pending = scenario.interactions.filter(isPendingDraft);
+  const [localState, setLocalState] = useState<State>("transition");
+  const editingState = controlledState ?? localState;
+  const setEditingState = onEditingState ?? setLocalState;
+  const state = scenario.mode === "transition" ? editingState : scenario.mode;
+  const visible = interactionsFor(scenario, state).map((i) =>
+    effectiveInteraction(i, state),
+  );
+  const pending = visible.filter((i) => missingDetails(i).length > 0);
+  const targetExists = scenario.interactions.some((i) => i.target);
+  const [notice, setNotice] = useState("");
   const update = (id: string, patch: Partial<Interaction>) =>
     onChange({
       ...scenario,
       interactions: scenario.interactions.map((i) =>
         i.id === id
-          ? { ...i, ...patch }
+          ? editInteraction(i, patch, state)
           : patch.hero
-            ? { ...i, hero: false }
+            ? editInteraction(i, { hero: false }, state)
             : i,
       ),
     });
+  const icon = (i: Interaction, field: OverrideKey) => {
+    const raw = scenario.interactions.find((item) => item.id === i.id)!;
+    return (
+      <OverrideIcon
+        interaction={raw}
+        field={field}
+        state={state}
+        displayValue={
+          field === "fromParticipantId" || field === "toParticipantId"
+            ? catalog.find((p) => p.id === raw[field])?.name
+            : undefined
+        }
+        onReset={() =>
+          onChange({
+            ...scenario,
+            interactions: scenario.interactions.map((item) =>
+              item.id === i.id ? resetOverride(item, field) : item,
+            ),
+          })
+        }
+      />
+    );
+  };
   const participants = catalog.filter((p) =>
     scenario.participantPlacements.some((x) => x.participantId === p.id),
   );
@@ -49,15 +97,14 @@ export function InteractionTable({
       <div className="section-heading">
         <div>
           <h2>
-            Interactions{" "}
-            <span className="count">{scenario.interactions.length}</span>
+            Interactions <span className="count">{visible.length}</span>
           </h2>
           <p>Tell the story in order. Select a row for operational details.</p>
         </div>
         <button
           className="primary small"
           onClick={() => {
-            const i = newInteraction(scenario.mode);
+            const i = newInteraction(state);
             onChange({
               ...scenario,
               interactions: [...scenario.interactions, i],
@@ -69,23 +116,83 @@ export function InteractionTable({
           Add interaction
         </button>
       </div>
+      {scenario.mode === "transition" && (
+        <>
+          <div className="table-options">
+            <div
+              className="segmented compact"
+              role="group"
+              aria-label="Editing state"
+            >
+              {(["current", "target", "transition"] as const).map((value) => (
+                <button
+                  key={value}
+                  aria-pressed={state === value}
+                  onClick={() => {
+                    setEditingState(value);
+                    setNotice("");
+                  }}
+                >
+                  {value === "transition"
+                    ? "Compare"
+                    : value === "current"
+                      ? "Current"
+                      : "Target"}
+                </button>
+              ))}
+            </div>
+            <button
+              className="secondary small"
+              disabled={
+                targetExists || !scenario.interactions.some((i) => i.current)
+              }
+              onClick={() => {
+                onChange(populateTarget(scenario));
+                setEditingState("target");
+                setNotice(
+                  "Target populated. Target fields inherit current values until you edit them.",
+                );
+              }}
+            >
+              Populate target from current
+            </button>
+          </div>
+          <p className="editing-help">
+            Editing{" "}
+            {state === "transition" ? "both states for comparison" : state}.
+            Diagram selection is independent. Target field edits override
+            current values. Shared deletion and reordering affect both states.
+            {targetExists &&
+              " Target already has interactions; initialization is available for an empty target."}
+          </p>
+          {notice && <p role="status">{notice}</p>}
+        </>
+      )}
       <QuickCapture
         scenario={scenario}
+        captureState={state}
         catalog={catalog}
         onChange={onChange}
         onCatalog={onCatalog}
       />
       <div className="table-options">
-        <button
-          className="secondary small"
-          disabled={!pending.length}
-          onClick={() => {
-            onSelect(pending[0].id);
-            focusInteractionDetail(pending[0]);
-          }}
-        >
-          Complete details{pending.length ? ` (${pending.length})` : ""}
-        </button>
+        {pending.length > 0 ? (
+          <button
+            className="secondary small"
+            onClick={() => {
+              onSelect(pending[0].id);
+              focusInteractionDetail(pending[0]);
+            }}
+          >
+            Complete details ({pending.length})
+          </button>
+        ) : (
+          <span className="subtle" role="status">
+            {visible.length
+              ? "Required fields complete"
+              : "No interactions to complete"}
+          </span>
+        )}
         <button
           className="text-button"
           aria-pressed={details}
@@ -117,7 +224,7 @@ export function InteractionTable({
             </tr>
           </thead>
           <tbody>
-            {scenario.interactions.map((i, n) => (
+            {visible.map((i, n) => (
               <tr
                 key={i.id}
                 className={selected === i.id ? "selected" : ""}
@@ -135,18 +242,19 @@ export function InteractionTable({
                     </button>
                     <OrderButtons
                       index={n}
-                      count={scenario.interactions.length}
+                      count={visible.length}
                       label={`interaction ${n + 1}`}
                       onMove={(d) =>
                         onChange({
                           ...scenario,
-                          interactions: reorder(scenario.interactions, n, d),
+                          interactions: moveVisible(scenario, visible, n, d),
                         })
                       }
                     />
                   </div>
                 </td>
                 <td>
+                  {icon(i, "fromParticipantId")}
                   <select
                     aria-label={`From for step ${n + 1}`}
                     aria-invalid={!i.draft && !i.fromParticipantId}
@@ -164,6 +272,7 @@ export function InteractionTable({
                   </select>
                 </td>
                 <td>
+                  {icon(i, "action")}
                   <input
                     aria-label={`Action for step ${n + 1}`}
                     aria-invalid={!i.draft && !i.action.trim()}
@@ -174,6 +283,7 @@ export function InteractionTable({
                   />
                 </td>
                 <td>
+                  {icon(i, "toParticipantId")}
                   <select
                     aria-label={`To for step ${n + 1}`}
                     aria-invalid={!i.draft && !i.toParticipantId}
@@ -193,6 +303,7 @@ export function InteractionTable({
                 {details ? (
                   <>
                     <td>
+                      {icon(i, "pattern")}
                       <select
                         aria-label={`Pattern for step ${n + 1}`}
                         value={i.pattern}
@@ -208,6 +319,7 @@ export function InteractionTable({
                       </select>
                     </td>
                     <td>
+                      {icon(i, "technology")}
                       <input
                         aria-label={`Technology for step ${n + 1}`}
                         maxLength={120}
@@ -247,6 +359,7 @@ export function InteractionTable({
                     </td>
                     <td>
                       <div className="inline">
+                        {icon(i, "animated")}
                         <input
                           type="checkbox"
                           aria-label={`Animate step ${n + 1}`}
@@ -255,6 +368,7 @@ export function InteractionTable({
                             update(i.id, { animated: e.target.checked })
                           }
                         />
+                        {icon(i, "hero")}
                         <button
                           className={`icon-button ${i.hero ? "hero-selected" : ""}`}
                           aria-label={`Principal interaction ${n + 1}`}
@@ -275,7 +389,7 @@ export function InteractionTable({
                       className="draft-status text-button"
                       onClick={() => onSelect(i.id)}
                     >
-                      {isPendingDraft(i)
+                      {missingDetails(i).length > 0
                         ? `Needs ${missingDetails(i).join(", ")}`
                         : i.pattern}
                     </button>
@@ -287,9 +401,22 @@ export function InteractionTable({
                       className="icon-button"
                       aria-label={`Duplicate step ${n + 1}`}
                       onClick={() => {
-                        const copy = { ...i, id: uid("i"), hero: false };
+                        const copy = {
+                          ...i,
+                          id: uid("i"),
+                          hero: false,
+                          ...(state === "target"
+                            ? { current: false, targetOverrides: undefined }
+                            : state === "current"
+                              ? { target: false, targetOverrides: undefined }
+                              : {}),
+                        };
                         const items = [...scenario.interactions];
-                        items.splice(n + 1, 0, copy);
+                        items.splice(
+                          items.findIndex((x) => x.id === i.id) + 1,
+                          0,
+                          copy,
+                        );
                         onChange({ ...scenario, interactions: items });
                         onSelect(copy.id);
                       }}
@@ -314,7 +441,7 @@ export function InteractionTable({
           </tbody>
         </table>
       </div>
-      {!scenario.interactions.length && (
+      {!visible.length && (
         <div className="empty-inline">
           Start with the business trigger. Who does what, and who receives it?
         </div>

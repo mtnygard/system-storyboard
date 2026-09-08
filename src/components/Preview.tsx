@@ -1,3 +1,4 @@
+import { effectiveInteraction } from "../domain/interaction-overrides";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Play, Pause, RotateCcw, Maximize2 } from "lucide-react";
 import type { GraphDoc } from "@coldtea/pr-lens-schema";
@@ -120,13 +121,23 @@ export function Preview({
           shown.lens === "architecture"
             ? r.atlas.edges
             : r.atlas.messages["flow-main"] || {},
-        ).map(([id, box]) => ({
-          id: id.replace(/^(edge|message)-/, ""),
-          box,
-          name:
-            scenario.interactions.find((i) => id.endsWith(i.id))?.action ||
-            "Interaction",
-        })),
+        ).map(([id, box]) => {
+          const rawId = id.replace(/^(edge|message)-/, "");
+          const interaction = scenario.interactions.find(
+            (i) => i.id === rawId || `${i.id}-target` === rawId,
+          );
+          const projected =
+            interaction &&
+            effectiveInteraction(
+              interaction,
+              rawId === `${interaction.id}-target` ? "target" : state,
+            );
+          return {
+            id: interaction?.id || rawId,
+            box,
+            name: projected?.action || "Interaction",
+          };
+        }),
       ]
     : [];
   const focus = step
