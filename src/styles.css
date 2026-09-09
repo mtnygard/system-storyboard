@@ -1190,17 +1190,20 @@ dialog form {
   justify-content: flex-end;
   gap: 10px;
 }
+.export-option,
+.standalone-diagrams {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 15px;
+  background: #f9fbfc;
+}
 .export-option {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   text-align: left;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 15px;
   margin-bottom: 10px;
-  background: #f9fbfc;
   color: #2b4e5b;
 }
 .export-option small {
@@ -1213,11 +1216,34 @@ dialog form {
   align-items: center;
   margin: 12px 0;
 }
+.standalone-diagrams {
+  max-height: min(240px, 30dvh);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  margin-top: 10px;
+}
+[data-theme="dark"] .standalone-diagrams {
+  background: var(--raised);
+}
+.standalone-diagrams:focus-visible {
+  outline: 3px solid #26a1a5;
+  outline-offset: 2px;
+}
+.standalone-diagrams .export-row:first-child {
+  margin-top: 0;
+}
+.standalone-diagrams .export-row:last-child {
+  margin-bottom: 0;
+}
 .export-row > span {
   flex: 1;
 }
 dialog h3 {
   margin-top: 24px;
+}
+dialog h3 + .export-option {
+  margin-top: 10px;
 }
 @media (min-width: 1650px) {
   .workbench {

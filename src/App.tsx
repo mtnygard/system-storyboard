@@ -1,5 +1,6 @@
 import { diagramHtml } from "./adapter/diagram-html";
 import { AppearanceControl } from "./components/AppearanceControl";
+import { PowerPointExport } from "./components/PowerPointExport";
 import { useAppearance } from "./components/useAppearance";
 import {
   useCallback,
@@ -895,6 +896,7 @@ export default function App() {
               </>
             )}
           </p>
+          <h3>All diagrams</h3>
           <button
             className="export-option"
             disabled={exporting || (!scenario && !workspace.scenarios.length)}
@@ -941,28 +943,41 @@ export default function App() {
           )}
           {scenario && (
             <>
-              <h3>Standalone diagrams</h3>
-              {(["architecture", "data-flow"] as const).map((lens) =>
-                (["light", "dark"] as const).map((theme) => (
-                  <div className="export-row" key={`${lens}-${theme}`}>
-                    <span>
-                      {lens === "architecture" ? "Architecture" : "Sequence"} ·{" "}
-                      {theme === "light" ? "Light" : "Dark"}
-                    </span>
-                    {(["html", "svg"] as const).map((format) => (
-                      <button
-                        className="secondary small"
-                        key={format}
-                        aria-label={`Export ${theme} ${lens === "architecture" ? "architecture" : "sequence"} as ${format.toUpperCase()}`}
-                        disabled={!snapshot?.graph.lenses.includes(lens)}
-                        onClick={() => exportDiagram(theme, lens, format)}
-                      >
-                        {format.toUpperCase()} <Download size={14} />
-                      </button>
-                    ))}
-                  </div>
-                )),
-              )}
+              <PowerPointExport
+                scenario={scenario}
+                catalog={workspace.participants}
+                state={state}
+                theme={theme}
+              />
+              <h3 id="standalone-diagrams-heading">Standalone diagrams</h3>
+              <div
+                className="standalone-diagrams"
+                role="region"
+                aria-labelledby="standalone-diagrams-heading"
+                tabIndex={0}
+              >
+                {(["architecture", "data-flow"] as const).map((lens) =>
+                  (["light", "dark"] as const).map((theme) => (
+                    <div className="export-row" key={`${lens}-${theme}`}>
+                      <span>
+                        {lens === "architecture" ? "Architecture" : "Sequence"}{" "}
+                        · {theme === "light" ? "Light" : "Dark"}
+                      </span>
+                      {(["html", "svg"] as const).map((format) => (
+                        <button
+                          className="secondary small"
+                          key={format}
+                          aria-label={`Export ${theme} ${lens === "architecture" ? "architecture" : "sequence"} as ${format.toUpperCase()}`}
+                          disabled={!snapshot?.graph.lenses.includes(lens)}
+                          onClick={() => exportDiagram(theme, lens, format)}
+                        >
+                          {format.toUpperCase()} <Download size={14} />
+                        </button>
+                      ))}
+                    </div>
+                  )),
+                )}
+              </div>
               <h3>Editable scenario</h3>
               <button
                 className="export-option"

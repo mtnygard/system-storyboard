@@ -10,6 +10,10 @@ You run the server locally, then use the browser app which saves your work local
 
 Use **Export** to download the diagram you're viewing as an HTML page or SVG. Send the HTML file to someone and they can open it in their browser. Use the SVG in a document, presentation, or web page.
 
+Choose **Export → Download PowerPoint** for a single `.pptx` containing an architecture overview, one slide per walkthrough card, and separate architecture and sequence animation slides (when those views are available). Each animation is an embedded H.264 MP4, so the recipient can copy the walkthrough slides or the video slides into another deck and present offline. The export uses the selected presentation state and current light/dark appearance. Slide headings and explanations are editable; static diagrams are embedded SVGs with the card's focus highlighted, plus PNG fallbacks for viewers without SVG support. SVGs retain sharp lines and text when scaled; animation slides remain raster MP4 video.
+
+PowerPoint export runs locally in your browser. Keep Studio open while the progress indicator runs, or choose **Cancel PowerPoint export**. No add-in, online viewer, or separate video file is required to present the result. Complete unfinished interactions and walkthrough cards before exporting; cards that refer to content missing from the selected state must be updated or exported in a state that includes that content. Without walkthrough cards, the deck contains the available diagram overviews and animation slides. Videos follow one full traffic cycle; if traffic animation is disabled, that view's video remains still.
+
 To share a whole scenario, choose **Export all diagrams**. You'll get a ZIP with architecture and sequence views for each available state, in light and dark themes. Unzip it and open `index.html` to browse the diagrams. The viewer lets you switch views, states, and themes without Studio. Choose the same export from the workspace header to include all your scenarios.
 
 If a scenario is incomplete, some steps or diagrams may be left out of the ZIP. You can see what's missing in the export dialog and in `EXPORT-NOTES.txt`.
