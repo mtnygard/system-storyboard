@@ -1,8 +1,18 @@
 # Integration Scenario Studio
 
-A local-first alpha workbench for enterprise integration architects. Author a business scenario through participants, boundaries, and an ordered interaction table; explore the compiled architecture and animated sequence; explain the change through a walkthrough.
+Create standalone HTML pages with animated SVG diagrams that explain how systems interact. Share the exported files with anyone: the HTML pages open directly in a browser, work offline, and require no server or access to Studio.
 
-This is an independent experiment inspired by PR Lens, not a fork or an upstream contribution. It consumes the published `@coldtea/pr-lens-schema` 0.2.1 and `@coldtea/pr-lens-renderer` 0.2.2 packages. No AI service, backend, account, or API key is required.
+In Studio, describe the participants and the requests and messages they exchange, then export architecture and sequence views. For a planned change, model the current and target states and export a comparison of the two.
+
+The Studio runs in your browser and saves work locally. It needs no account, backend, or API key. This is an alpha, built primarily for desktop use.
+
+## Export and share
+
+The **Export** menu produces a standalone HTML page or an SVG of the selected diagram. HTML pages contain their diagrams and can be sent as files for recipients to open locally. SVGs can be used in documents, presentations, and other pages.
+
+**Export all diagrams** creates a ZIP containing architecture and sequence views, available states, and both light and dark themes. Extract the ZIP and open `index.html` to browse the diagrams offline. The included interactive viewer lets readers switch views, states, and themes without Studio. From the workspace header, this export includes every scenario.
+
+Incomplete scenarios may have fewer diagrams available to export. Bulk exports list omitted steps and unavailable diagrams in the dialog and in `EXPORT-NOTES.txt`.
 
 ## Run locally
 
@@ -13,7 +23,50 @@ npm ci
 npm run dev
 ```
 
-Open the local address printed by Vite. Start with **Order to SAP**, or choose **Create scenario**. To serve a production build, run `npm run build` and `npx vite preview`.
+Open the address printed by Vite. Choose **Order to SAP** to explore the sample, or **Create scenario** to start your own.
+
+To build and preview the production version:
+
+```sh
+npm run build
+npm run preview
+```
+
+## Build a scenario
+
+Add the systems involved under **Participants**, then open **Interactions** to describe what happens between them. **Quick capture** accepts one action per line, so you can sketch the steps before filling in senders, receivers, and interaction patterns. Reorder the rows to change the sequence.
+
+The **Architecture** view shows connections between participants. The **Sequence** view shows the exchanges in order. Traffic animation follows the story; its timing does not represent system latency. **Checks** points out missing details and inconsistencies. While you edit an incomplete step, the preview either omits the draft or holds the last valid diagram and explains what it is showing.
+
+For a transition scenario, switch between **Current**, **Target**, and **Transition** diagrams. The interaction editor has a separate **Current / Target / Compare** selector. **Populate target from current** copies the starting structure into an empty target. Target fields inherit current values until you edit them; resetting an override restores inheritance. Deleting or reordering shared interactions affects both states.
+
+Use **Walkthrough** to add a guided explanation. Each card can focus on part of the diagram, with a heading and a short description.
+
+You can also append interactions from a CSV file. Use the headings `From,Action,To`, with optional `Pattern,Technology` columns. Sender and receiver names must each match one catalog participant, ignoring case. The import dialog provides an example file.
+
+## Save your work
+
+Edits are automatically saved in browser local storage. Export a Studio scenario file to keep a backup.
+
+## Limits
+
+- Sequence diagrams require 2–12 participants and 1–64 interactions. Architecture diagrams can start with one participant. The renderer allows up to 16 boundaries.
+- Walkthroughs allow up to 12 cards, with 48-character headings and 140-character explanations.
+- Undo keeps the last 40 editing snapshots for the current session.
+- Layout and routing are automatic; there is no manual positioning.
+  
+## Development
+
+The app uses React, TypeScript, and Vite. PR Lens packages validate and render the diagrams.
+
+| Location          | Contents                                                                  |
+| ----------------- | ------------------------------------------------------------------------- |
+| `src/domain/`     | Scenario model, state overrides, checks, persistence, and import handling |
+| `src/adapter/`    | Compilation to PR Lens documents, animation timing, and diagram exports   |
+| `src/components/` | Editors, previews, and walkthrough controls                               |
+| `src/test/`       | Application integration tests                                             |
+
+To check a change:
 
 ```sh
 npm run typecheck
@@ -21,74 +74,8 @@ npm test
 npm run build
 ```
 
-The application is intentionally local-only. It is not registered with a hosting service and does not synchronize browser data. After installation, the application has no external runtime requests, including web fonts.
+Unit tests cover compilation, state mapping, storage, imports, and exports. React integration tests exercise editing and previews with the real compiler and renderer. These run in a simulated DOM; they do not check visual layout in a browser.
 
-## Try the complete journey
+## License
 
-1. Open **Order to SAP**. The example shows synchronous requests, asynchronous messages, returns, a principal interaction, and added / modified / removed / unchanged elements.
-2. Switch **Architecture / Sequence** and **Current / Target / Transition**. Pause or restart traffic. Enlarge the diagram when labels need more room.
-3. Use **Quick capture** in **Interactions**: enter one action or paste one action per line, then press Enter (Shift+Enter adds a line). **Add participants now** enables optional searchable sender/receiver fields, inline participant creation, and an explicit suggestion to continue from the previous receiver. Captured steps save immediately with an unspecified pattern. **Complete details** opens the first unfinished step; choose its participants and pattern, then use **Next unfinished step**. The inspector also offers reply, onward-message and internal-action shortcuts.
-4. Edit an action in the table; choose **Show detail columns** for technology, pattern, state and traffic. Use the up/down controls to reorder; duplicate or delete rows; select the star to choose the one principal interaction.
-5. Choose **Participants** to create a participant inline or add one from the searchable catalog. Add boundaries and select a participant to assign it to a boundary, edit shared catalog details, or change state presence.
-6. Clear an action temporarily. The previous valid preview remains, with a message explaining the incomplete edit. Drafts continue to save.
-7. Open **Checks**. Follow a question back to the relevant editor. Complete descriptions and operational details in the inspector.
-8. Open **Walkthrough** to edit headings, explanations, stages and focus. Reorder cards, choose one directly, or play through them at five-second intervals. Regenerating cards asks before replacing existing work.
-9. **Export** either view as a light/dark standalone HTML page with embedded SVG, a separate SVG, or an editable Studio scenario. Import the Studio file from the home screen to create an independent copy. **Export all diagrams** downloads a single ZIP: in a scenario it includes both views in every available presentation, in light and dark themes; from the workspace header it includes every scenario. Transition scenarios include Current, Target, and Transition projections. The ZIP includes an offline `index.html`, an interactive HTML viewer with embedded SVGs and Architecture/Sequence, presentation, and Light/Dark selectors for every diagram, and separate `.svg` files. Numbered scenario folders prevent filename collisions. Unavailable diagrams are listed in the dialog and `EXPORT-NOTES.txt`; an empty archive is never downloaded.
-
-Use **Appearance** in the header to choose **Light**, **Dark**, or **System**. The choice is saved separately from the workspace and applies to live diagrams as well as the workbench. Export controls continue to offer both diagram themes.
-
-## Authoring and persistence
-
-The Studio model is the saved source of truth. Mutable display names never determine identity. Array order determines interaction, boundary and walkthrough presentation order. Boundary order fields are also maintained by the editor.
-
-A versioned workspace is saved under `integration-scenario-studio.v1` in local storage. All stored/imported shapes are validated at the boundary, including ID uniqueness and a single principal interaction. Draft semantic inconsistencies remain editable and saveable. A corrupt/unsupported saved workspace is preserved, saving is paused, and the UI offers the original data for download before reset. Save failures are displayed rather than silently reporting success. Normal saves are debounced by 350 ms, with a page-hide flush.
-
-To start from scratch, choose **Clear workspace** on the home screen and confirm. This removes all scenarios and catalog participants; the empty workspace persists across reloads. You can create or import a scenario immediately, or restore the sample using **Reset workspace to seeded example**.
-
-Export regularly: clearing site data, switching browsers, changing the app's origin/port, or private browsing can remove or isolate your workspace. Export/import preserves the supported enterprise fields, presence, badges, operational notes, and walkthrough. Import remaps participant and scenario IDs so editing an imported copy cannot inadvertently change the existing catalog.
-
-A CSV import appends interactions without replacing the existing list. Required headings are `From,Action,To`; optional headings are `Pattern,Technology`. Participant names must match exactly one catalog participant (case-insensitive). Quoted commas, line breaks, and escaped quotation marks are supported. The import dialog includes a downloadable example. Unsupported files produce a plain-language error and leave the workspace unchanged.
-
-## Architecture
-
-- `src/domain/model.ts`: independent Studio types, boundary schemas, constructors, reordering and default walkthrough generation.
-- `src/domain/seed.ts`: fictional Order to SAP transition scenario.
-- `src/domain/checks.ts`: pure consistency/readability checks grouped by severity.
-- `src/domain/storage.ts`: versioned local persistence, validated imports, CSV parsing and exports.
-- `src/domain/importers.ts`: future importer proposal interface; external importers remain out of scope.
-- `src/adapter/compiler.ts`: pure Studio-to-PR-Lens compilation, schema and reference validation, plain-language validation translation and rendering entry point.
-- `src/adapter/architecture-timing.ts`: replaces independent architecture pulses with a shared, ordered story clock in both previews and standalone exports.
-- `src/adapter/browser-crypto.ts`: narrow SHA-256 shim for the renderer's Node crypto import. Uses `@noble/hashes`; installed packages are unchanged.
-- `src/components`: workbench surfaces, last-valid preview cache, atlas-based selection/focus, participant and interaction editors.
-
-Compilation checks the authoring model before calling PR Lens's `safeParseGraphDoc`, which validates both shape and reference integrity. Only valid documents reach rendering. Newly captured interactions carry a backward-compatible `draft` flag (absent in older exports means false). Incomplete captured steps are excluded from compilation until action, sender, receiver and pattern are supplied. Their original table positions and unfinished status are shown explicitly above the partial preview. Established non-draft interactions retain last-valid preview protection during incomplete edits. State projections filter presence; transition deltas are derived from current/target presence and the changed flag. Single-state scenarios use unchanged unless explicitly marked changed. When viewing a current or target projection of a transition scenario, change badges retain their transition meaning.
-
-PR Lens's mandatory repository provenance is populated with explicit local placeholder values (`local/integration-scenario-studio`, zero revision IDs). These do not refer to a real repository or commit. Studio does not generate source links or present provenance during authoring.
-
-Participant enterprise types map to the closest renderer kind, with the original type retained in the Studio model and display subtitle. Action, technology and payload map to bounded presentation labels; numeric frequency maps to message repeat. All operational data remains in Studio exports even when the diagram cannot express it. An architecture interaction maps to a stable `edge-` identifier and a flow interaction to a stable `message-` identifier. Layout uses stable participant order and rank hints, not display names or manual positioning.
-
-## Alpha scope and limits
-
-All four milestones in `product-brief.md` are implemented: walking skeleton, core authoring, transition story, and explanation/handoff.
-
-- Desktop authoring is primary. On narrower screens the inspector becomes a closable drawer, navigation wraps into a horizontal strip, and wide tables/diagrams scroll within their regions. Mobile authoring is not optimized.
-- Native keyboard controls support editing, selection, row/card/boundary reordering, dialogs and navigation. Atlas regions are keyboard-selectable and named. Focus rings and text/symbol change labels supplement color.
-- Reduced-motion preferences default traffic to a static presentation. Standard playback uses self-contained SVG animation and the browser's SVG timeline controls. Architecture traffic follows table order, with one active crossing at a time (1.4 seconds each), and skips disabled traffic. Numeric repeats produce up to three consecutive crossings. This expresses narrative order, not a latency simulation or a claim that asynchronous work cannot overlap. In Transition, both alternative paths follow their table positions; Current and Target isolate each state. Studio adapts the pinned renderer's generated edge/pulse markup and tests this compatibility contract; sequence timing remains supplied by PR Lens. Static mode also hides traffic markers as a fallback. Walkthrough auto-advance only starts on explicit request.
-- The published sequence schema requires 2–12 participants and 1–64 interactions. Architecture can begin with one participant; a sequence appears when its minimum is met. The renderer supports at most 16 boundaries. Checks explain these limits. A single-participant self-action can be represented in architecture, but cannot form a sequence alone.
-- Walkthroughs support up to 12 cards, 48-character headings and 140-character explanations. The Studio UI can retain one card, but the compiled PR Lens document includes a walkthrough only with at least two complete, applicable cards. Focused cards wholly absent from a selected state are omitted from that compiled document; Studio retains them.
-- Renaming preserves identifiers and stable rank hints. Renderer-owned routing can still adjust when structure, text dimensions, boundaries, or included participants change.
-- A held preview states which presentation it shows. Individual diagram exports are disabled for invalid or partially resolved stories, so a stale or incomplete diagram is never mislabeled as a full export. Bulk ZIP exports may include resolved steps, with omitted positions recorded in the dialog and export notes. Studio exports remain available.
-- Undo retains the last 40 editing snapshots for the current session. It is not a revision history.
-- The core alpha works without code/JSON authoring. Advanced importers, AI extraction, synchronization, authentication, governance, and manual drawing are intentionally absent.
-
-## Verification
-
-The test suite covers delta mapping, every interaction-to-message pattern, stable identities, seeded compilation/schema validation and both SVG views in all three states and themes, ordering, SVG text escaping, SHA-256 compatibility, validation translation, draft persistence, corrupt-data protection, isolated round trips, CSV handling, and architectural checks.
-
-React integration tests use the real compiler and renderer. They create a new scenario with two participants and five interactions through the UI, generate/focus its walkthrough, edit and reorder the seed, switch states, verify last-valid preview preservation, reload saved state, and verify reduced-motion defaults. These are DOM integration tests, not a full browser visual regression suite.
-
-## Third-party notices
-
-PR Lens and other bundled dependencies retain their licenses in `THIRD_PARTY_NOTICES.txt`. A copy is included in production output at `/third-party-notices.txt`. Studio source was independently developed; third-party package code was not copied into it.
-
-Interaction editing has its own Current / Target / Compare selector, independent of the diagram. New captures use the editing state. Populate target from current initializes an empty target with shared interactions and current participant placements; existing target work is never replaced. Target fields inherit current values. Editing a target field creates an override automatically; a small link icon identifies inherited fields, and a reset icon restores inheritance. Current edits flow through only to fields without overrides. Explicit empty, false, and equal-valued overrides are preserved. Shared deletion and reordering still affect both states. Overrides persist in Studio files and are reflected in diagram and HTML exports.
+[MIT](LICENSE). Dependency licenses are listed in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt), also included in production builds at `/third-party-notices.txt`.
