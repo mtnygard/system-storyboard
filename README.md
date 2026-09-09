@@ -2,9 +2,9 @@
 
 Create standalone HTML pages with animated SVG diagrams that explain how systems interact. Share the exported files with anyone: the HTML pages open directly in a browser, work offline, and require no server or access to Studio.
 
-In Studio, describe the participants and the requests and messages they exchange, then export architecture and sequence views. For a planned change, model the current and target states and export a comparison of the two.
+Use Studio to describe the participants, the requests and messages they exchange, then export architecture and sequence views. To illustrate future changes, you can model the current and target states and export pages that let the viewer switch between current, target, and change views.
 
-The Studio runs in your browser and saves work locally. It needs no account, backend, or API key. This is an alpha, built primarily for desktop use.
+You run the server locally, then use the browser app which saves your work locally. There is no need to deploy anything and no database.
 
 ## Export and share
 
