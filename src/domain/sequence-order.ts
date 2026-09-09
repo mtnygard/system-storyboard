@@ -6,8 +6,9 @@ type Connection = Pick<
 >;
 
 /**
- * Maximize left-to-right arrows. Ties favor non-return messages, then first
- * appearance in the story. Unused participants retain their relative order.
+ * Maximize left-to-right non-return messages, with first appearance in the
+ * request flow breaking ties. Replies never influence column order. Participants
+ * outside that flow retain their relative placement order at the end.
  * The sequence schema permits at most 12 participants: subset DP is bounded
  * to 4096 states, rather than searching all participant permutations.
  */
@@ -18,12 +19,14 @@ export function sequenceParticipantOrder(
   const included = new Set(participantIds);
   const connections = interactions.filter(
     (i) =>
+      i.pattern !== "return" &&
       i.fromParticipantId !== i.toParticipantId &&
       included.has(i.fromParticipantId) &&
       included.has(i.toParticipantId),
   );
   const encountered = new Set<string>();
   for (const i of interactions) {
+    if (i.pattern === "return") continue;
     for (const id of [i.fromParticipantId, i.toParticipantId]) {
       if (included.has(id)) encountered.add(id);
     }
@@ -35,11 +38,10 @@ export function sequenceParticipantOrder(
   if (active.length > 12) return [...active, ...unused];
   const positions = new Map(active.map((id, index) => [id, index]));
   const weights = active.map(() => new Int32Array(active.length));
-  const primaryWeight = connections.length + 1;
   for (const i of connections) {
     weights[positions.get(i.fromParticipantId)!][
       positions.get(i.toParticipantId)!
-    ] += primaryWeight + (i.pattern === "return" ? 0 : 1);
+    ] += 1;
   }
   const full = (1 << active.length) - 1;
   const score = new Int32Array(full + 1);
