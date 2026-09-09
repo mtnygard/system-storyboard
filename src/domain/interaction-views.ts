@@ -24,11 +24,26 @@ export function moveVisible(
   index: number,
   direction: number,
 ): Interaction[] {
-  const other = visible[index + direction];
-  if (!other) return scenario.interactions;
-  const items = [...scenario.interactions];
-  const a = items.findIndex((i) => i.id === visible[index].id);
-  const b = items.findIndex((i) => i.id === other.id);
-  [items[a], items[b]] = [items[b], items[a]];
-  return items;
+  return moveVisibleTo(scenario, visible, index, index + direction);
+}
+
+/** Insert at a visible position while preserving raw records and hidden slots. */
+export function moveVisibleTo(
+  scenario: Scenario,
+  visible: readonly Interaction[],
+  from: number,
+  to: number,
+): Interaction[] {
+  if (from === to || !visible[from] || !visible[to])
+    return scenario.interactions;
+  const ids = visible.map((i) => i.id);
+  const [moved] = ids.splice(from, 1);
+  ids.splice(to, 0, moved);
+  const included = new Set(ids);
+  const originals = new Map(scenario.interactions.map((i) => [i.id, i]));
+  if (ids.some((id) => !originals.has(id))) return scenario.interactions;
+  let next = 0;
+  return scenario.interactions.map((i) =>
+    included.has(i.id) ? originals.get(ids[next++])! : i,
+  );
 }

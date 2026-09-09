@@ -8,22 +8,22 @@ You run the server locally, then use the browser app which saves your work local
 
 ## Export and share
 
-The **Export** menu produces a standalone HTML page or an SVG of the selected diagram. HTML pages contain their diagrams and can be sent as files for recipients to open locally. SVGs can be used in documents, presentations, and other pages.
+Use **Export** to download the diagram you're viewing as an HTML page or SVG. Send the HTML file to someone and they can open it in their browser. Use the SVG in a document, presentation, or web page.
 
-**Export all diagrams** creates a ZIP containing architecture and sequence views, available states, and both light and dark themes. Extract the ZIP and open `index.html` to browse the diagrams offline. The included interactive viewer lets readers switch views, states, and themes without Studio. From the workspace header, this export includes every scenario.
+To share a whole scenario, choose **Export all diagrams**. You'll get a ZIP with architecture and sequence views for each available state, in light and dark themes. Unzip it and open `index.html` to browse the diagrams. The viewer lets you switch views, states, and themes without Studio. Choose the same export from the workspace header to include all your scenarios.
 
-Incomplete scenarios may have fewer diagrams available to export. Bulk exports list omitted steps and unavailable diagrams in the dialog and in `EXPORT-NOTES.txt`.
+If a scenario is incomplete, some steps or diagrams may be left out of the ZIP. You can see what's missing in the export dialog and in `EXPORT-NOTES.txt`.
 
 ## Run locally
 
-Requires Node.js 22 or later and npm.
+You'll need Node.js 22 or later and npm. Install the dependencies and start the local server:
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Open the address printed by Vite. Choose **Order to SAP** to explore the sample, or **Create scenario** to start your own.
+Open the address printed in your terminal. Choose **Order to SAP** to try the example, or **Create scenario** to start your own.
 
 To build and preview the production version:
 
@@ -34,27 +34,31 @@ npm run preview
 
 ## Build a scenario
 
-Add the systems involved under **Participants**, then open **Interactions** to describe what happens between them. **Quick capture** accepts one action per line, so you can sketch the steps before filling in senders, receivers, and interaction patterns. Reorder the rows to change the sequence.
+Add your systems under **Participants**, then open **Interactions** to describe what happens between them. In **Quick capture**, type or paste one action per line. You can get the steps down first and fill in the senders, receivers, and interaction patterns later. Move rows up or down to change the order.
 
-The **Architecture** view shows connections between participants. The **Sequence** view shows the exchanges in order. Traffic animation follows the story; its timing does not represent system latency. **Checks** points out missing details and inconsistencies. While you edit an incomplete step, the preview either omits the draft or holds the last valid diagram and explains what it is showing.
+Switch to **Architecture** to see how the systems connect, or **Sequence** to follow their exchanges in order. The animation follows the steps you've written; it doesn't simulate how long the systems take to respond.
 
-For a transition scenario, switch between **Current**, **Target**, and **Transition** diagrams. The interaction editor has a separate **Current / Target / Compare** selector. **Populate target from current** copies the starting structure into an empty target. Target fields inherit current values until you edit them; resetting an override restores inheritance. Deleting or reordering shared interactions affects both states.
+Open **Checks** for help finding missing details and inconsistencies. If a step isn't ready to draw, the preview explains whether it has left that step out or is still showing the last valid diagram.
 
-Use **Walkthrough** to add a guided explanation. Each card can focus on part of the diagram, with a heading and a short description.
+To describe a planned change, use **Current** for how things work today and **Target** for how they should work. **Transition** shows the changes between them. You can choose which state to edit separately from the diagram, using **Current / Target / Compare** in the interaction editor.
 
-You can also append interactions from a CSV file. Use the headings `From,Action,To`, with optional `Pattern,Technology` columns. Sender and receiver names must each match one catalog participant, ignoring case. The import dialog provides an example file.
+If your target is empty, **Populate target from current** gives you a starting point. Target fields follow the current values until you edit them. Reset a target field to have it follow the current value again. Deleting or reordering an interaction shared by both states changes both.
+
+Use **Walkthrough** to explain the diagram a piece at a time. Add cards with headings and short descriptions, and choose the part of the diagram each card focuses on.
+
+You can also add interactions from a CSV file. Use the column headings `From,Action,To`, and include `Pattern` and `Technology` if you have them. Sender and receiver names must match participants in your catalog; capitalization doesn't matter. Download the example from the import dialog to see the format.
 
 ## Save your work
 
-Edits are automatically saved in browser local storage. Export a Studio scenario file to keep a backup.
+Studio saves your edits in your browser as you work. Use **Export → Studio scenario** to save a complete editable backup as a `.studio.json` file. **Import scenario** restores boundary orientation, participant order, display hints (including **Stretch to fill**), subtitles, badges, interactions, and walkthroughs. CSV import adds interaction rows only; use the JSON scenario file to move the complete scenario between workspaces.
 
 ## Limits
 
-- Sequence diagrams require 2–12 participants and 1–64 interactions. Architecture diagrams can start with one participant. The renderer allows up to 16 boundaries.
-- Walkthroughs allow up to 12 cards, with 48-character headings and 140-character explanations.
-- Undo keeps the last 40 editing snapshots for the current session.
-- Layout and routing are automatic; there is no manual positioning.
-  
+- Sequence diagrams need 2–12 participants and 1–64 interactions. Architecture diagrams can start with one participant. You can use up to 16 boundaries.
+- A walkthrough can have up to 12 cards. Headings are limited to 48 characters and explanations to 140.
+- You can undo the last 40 edits during the current session.
+- Studio places the participants and routes the connections automatically. You can't drag them into position.
+
 ## Development
 
 The app uses React, TypeScript, and Vite. PR Lens packages validate and render the diagrams.
@@ -74,7 +78,7 @@ npm test
 npm run build
 ```
 
-Unit tests cover compilation, state mapping, storage, imports, and exports. React integration tests exercise editing and previews with the real compiler and renderer. These run in a simulated DOM; they do not check visual layout in a browser.
+Unit tests cover compilation, state mapping, storage, imports, and exports. React integration tests check editing and previews using the real compiler and renderer. The tests run in a simulated DOM, so you'll still need to check the layout in a browser.
 
 ## License
 

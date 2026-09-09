@@ -246,7 +246,13 @@ export default function App() {
   ) => {
     if (!snapshot) return;
     try {
-      const r = renderPreview(snapshot.graph, lens, theme);
+      const r = renderPreview(
+        snapshot.graph,
+        lens,
+        theme,
+        snapshot.horizontalBoundaryIds,
+        snapshot.stretchParticipantIds,
+      );
       if (r) {
         download(
           `${safeName}-${state}-${lens}-${theme}.${format}`,
@@ -740,6 +746,10 @@ export default function App() {
             are optional.
           </p>
           <p>
+            CSV adds interaction rows only. To restore a complete scenario, use
+            Import scenario with a .studio.json file.
+          </p>
+          <p>
             Rows are appended in file order. Patterns use the same names as the
             interaction table, such as “synchronous request” or “asynchronous
             message”.
@@ -969,7 +979,10 @@ export default function App() {
               >
                 <span>
                   <strong>Studio scenario</strong>
-                  <small>Re-importable copy with all enterprise details</small>
+                  <small>
+                    Editable JSON with boundary layout, display hints, and all
+                    scenario details
+                  </small>
                 </span>
                 <Download size={18} />
               </button>

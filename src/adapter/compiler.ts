@@ -1,5 +1,7 @@
 import { projectInteractions } from "../domain/interaction-overrides";
 import { isPendingDraft } from "../domain/drafts";
+import { sequenceParticipantOrder } from "../domain/sequence-order";
+import { renderPlatforms } from "./platform-renderer";
 import { sequenceArchitectureTraffic } from "./architecture-timing";
 import {
   safeParseGraphDoc,
@@ -96,6 +98,8 @@ export type CompileResult =
   | {
       ok: true;
       graph: GraphDoc;
+      horizontalBoundaryIds: string[];
+      stretchParticipantIds: string[];
       omitted: { id: string; position: number; action: string }[];
     }
   | { ok: false; messages: string[] };
@@ -183,6 +187,16 @@ export function compileScenario(
         },
       ];
     });
+  // Compact each boundary by default; these rank hints are floors, so the
+  // renderer can still add depth and routing space for interaction flows.
+  const nextRowByBoundary = new Map<string, number>();
+  const participantRanks = Object.fromEntries(
+    placements.map((p) => {
+      const row = nextRowByBoundary.get(p.boundaryId) ?? 0;
+      nextRowByBoundary.set(p.boundaryId, row + 1);
+      return [p.participantId, row];
+    }),
+  );
   const input: GraphDocInput = {
     schemaVersion: SCHEMA_VERSION,
     kind: "graph",
@@ -231,7 +245,10 @@ export function compileScenario(
             id: "flow-main",
             title: label(s.name),
             delta: s.mode === "transition" ? "modified" : "unchanged",
-            participants: placements.map((p) => ({ node: p.participantId })),
+            participants: sequenceParticipantOrder(
+              placements.map((p) => p.participantId),
+              interactions,
+            ).map((node) => ({ node })),
             messages: interactions.map((i) => messageFor(i, s.mode)),
           },
         ]
@@ -256,13 +273,23 @@ export function compileScenario(
     layout: {
       direction: "right",
       laneOrder: s.boundaries.map((b) => b.id),
-      rank: Object.fromEntries(placements.map((p, n) => [p.participantId, n])),
+      rank: participantRanks,
     },
   };
   try {
     const result = safeParseGraphDoc(input);
     return result.ok
-      ? { ok: true, graph: result.value, omitted }
+      ? {
+          ok: true,
+          graph: result.value,
+          omitted,
+          stretchParticipantIds: placements
+            .filter((p) => p.displayHints?.stretchToFill)
+            .map((p) => p.participantId),
+          horizontalBoundaryIds: s.boundaries
+            .filter((b) => b.orientation === "horizontal")
+            .map((b) => b.id),
+        }
       : {
           ok: false,
           messages: [
@@ -279,9 +306,25 @@ export function renderPreview(
   graph: GraphDoc,
   lens: "architecture" | "data-flow",
   theme: "light" | "dark" = "light",
+  horizontalBoundaryIds: readonly string[] = [],
+  stretchParticipantIds: readonly string[] = [],
 ): RenderedSvg | undefined {
   if (!graph.lenses.includes(lens)) return undefined;
-  const rendered = render(graph, { lens, theme });
+  const rendered =
+    lens === "architecture" &&
+    (horizontalBoundaryIds.some((id) =>
+      graph.nodes.some((node) => node.lane === id),
+    ) ||
+      stretchParticipantIds.some((id) =>
+        graph.nodes.some((node) => node.id === id),
+      ))
+      ? renderPlatforms(
+          graph,
+          horizontalBoundaryIds,
+          theme,
+          stretchParticipantIds,
+        )
+      : render(graph, { lens, theme });
   return lens === "architecture"
     ? sequenceArchitectureTraffic(graph, rendered)
     : rendered;

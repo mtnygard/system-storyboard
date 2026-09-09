@@ -909,6 +909,19 @@ button.secondary,
   flex-direction: column;
   gap: 5px;
 }
+.placed-participant-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.placed-participant-row > .placed-participant {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.placed-participant-row > .order-buttons {
+  flex-shrink: 0;
+}
 .placed-participant {
   display: flex;
   align-items: center;
@@ -1903,4 +1916,58 @@ dialog h3 {
 .override-field > .field > span,
 .inspector-fields [data-interaction-detail] .field > span {
   padding-right: 24px;
+}
+
+.capture-parse-preview {
+  margin: 10px 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.capture-parse-preview ol {
+  margin: 6px 0;
+  padding-left: 22px;
+}
+.capture-parse-preview li {
+  margin: 8px 0;
+}
+.capture-parse-preview li > span {
+  display: block;
+}
+.capture-parse-preview small {
+  display: block;
+  margin-top: 4px;
+}
+
+.inspector-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.inspector-group + .inspector-group {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.inspector-group h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.row-drag-handle {
+  cursor: grab;
+  flex-shrink: 0;
+}
+.row-drag-handle:active {
+  cursor: grabbing;
+}
+.row-drag-handle:disabled {
+  cursor: default;
+}
+.interaction-table tr.dragging {
+  opacity: 0.45;
+}
+.interaction-table tr.drop-before > td {
+  box-shadow: inset 0 3px var(--accent);
+}
+.interaction-table tr.drop-after > td {
+  box-shadow: inset 0 -3px var(--accent);
 }

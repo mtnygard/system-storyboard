@@ -5,7 +5,12 @@ import type { GraphDoc } from "@coldtea/pr-lens-schema";
 import type { RenderedSvg } from "@coldtea/pr-lens-renderer";
 import { compileScenario, renderPreview } from "../adapter/compiler";
 import type { Scenario, Participant, State, Step } from "../domain/model";
-export type PreviewSnapshot = { graph: GraphDoc; state: State };
+export type PreviewSnapshot = {
+  graph: GraphDoc;
+  state: State;
+  horizontalBoundaryIds: string[];
+  stretchParticipantIds: string[];
+};
 export function Preview({
   theme,
   scenario,
@@ -40,6 +45,8 @@ export function Preview({
     | {
         rendered: RenderedSvg;
         graph: GraphDoc;
+        horizontalBoundaryIds: string[];
+        stretchParticipantIds: string[];
         state: State;
         lens: "architecture" | "data-flow";
       }
@@ -56,7 +63,15 @@ export function Preview({
   const rendering = useMemo(() => {
     if (!result.ok) return undefined;
     try {
-      return { value: renderPreview(result.graph, lens, theme) };
+      return {
+        value: renderPreview(
+          result.graph,
+          lens,
+          theme,
+          result.horizontalBoundaryIds,
+          result.stretchParticipantIds,
+        ),
+      };
     } catch {
       return {
         error:
@@ -68,7 +83,12 @@ export function Preview({
     () =>
       onSnapshot(
         result.ok && !result.omitted.length && !rendering?.error
-          ? { graph: result.graph, state }
+          ? {
+              graph: result.graph,
+              state,
+              horizontalBoundaryIds: result.horizontalBoundaryIds,
+              stretchParticipantIds: result.stretchParticipantIds,
+            }
           : undefined,
       ),
     [result, state, rendering, onSnapshot],
@@ -77,6 +97,8 @@ export function Preview({
     last.current = {
       rendered: rendering.value,
       graph: result.graph,
+      horizontalBoundaryIds: result.horizontalBoundaryIds,
+      stretchParticipantIds: result.stretchParticipantIds,
       state,
       lens,
     };
@@ -89,7 +111,13 @@ export function Preview({
   const shown = useMemo(() => {
     if (!source || source.rendered.theme === theme) return source;
     try {
-      const rendered = renderPreview(source.graph, source.lens, theme);
+      const rendered = renderPreview(
+        source.graph,
+        source.lens,
+        theme,
+        source.horizontalBoundaryIds,
+        source.stretchParticipantIds,
+      );
       return rendered ? { ...source, rendered } : source;
     } catch {
       return source;

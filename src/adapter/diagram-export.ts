@@ -51,7 +51,13 @@ export function scenarioDiagramVariants(
           `${scenario.name} (${state}): Unfinished steps ${compiled.omitted.map((i) => i.position).join(", ")} are omitted from these diagrams. Complete their details to export the full story.`,
         );
       try {
-        const rendered = renderPreview(compiled.graph, lens, theme);
+        const rendered = renderPreview(
+          compiled.graph,
+          lens,
+          theme,
+          compiled.horizontalBoundaryIds,
+          compiled.stretchParticipantIds,
+        );
         if (!rendered) throw Error("Unavailable diagram");
         variant.svg = rendered.svg;
       } catch {

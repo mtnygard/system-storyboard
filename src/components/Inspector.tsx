@@ -433,64 +433,94 @@ export function Inspector({
                 })
               }
             />
-            <TextField
-              label="Display subtitle"
-              value={placement.subtitle}
-              onChange={(subtitle) =>
-                onChange({
-                  ...scenario,
-                  participantPlacements: scenario.participantPlacements.map(
-                    (p) => (p === placement ? { ...p, subtitle } : p),
-                  ),
-                })
-              }
-            />
-            <TextField
-              label="Badges (comma separated)"
-              value={placement.badges.join(", ")}
-              onChange={(value) =>
-                onChange({
-                  ...scenario,
-                  participantPlacements: scenario.participantPlacements.map(
-                    (p) =>
-                      p === placement
-                        ? {
-                            ...p,
-                            badges: value
-                              .split(",")
-                              .slice(0, 6)
-                              .map((b) => b.trim()),
-                          }
-                        : p,
-                  ),
-                })
-              }
-            />
-            {(
-              [
-                ["description", "Description"],
-                ["domain", "Business domain"],
-                ["owner", "Owner"],
-                ["location", "Deployment location"],
-                ["trustZone", "Trust zone"],
-                ["lifecycle", "Lifecycle"],
-              ] as const
-            ).map(([key, label]) => (
-              <TextField
-                key={key}
-                label={label}
-                value={participant[key]}
-                multiline={key === "description"}
-                maxLength={key === "description" ? 2000 : 120}
-                onChange={(value) =>
-                  onCatalog(
-                    catalog.map((p) =>
-                      p.id === selected ? { ...p, [key]: value } : p,
+            <section className="inspector-group" aria-label="Display hints">
+              <h3>Display hints</h3>
+              <Toggle
+                label="Stretch to fill"
+                checked={placement.displayHints?.stretchToFill ?? false}
+                onChange={(stretchToFill) =>
+                  onChange({
+                    ...scenario,
+                    participantPlacements: scenario.participantPlacements.map(
+                      (p) =>
+                        p === placement
+                          ? {
+                              ...p,
+                              displayHints: {
+                                ...p.displayHints,
+                                stretchToFill,
+                              },
+                            }
+                          : p,
                     ),
-                  )
+                  })
                 }
               />
-            ))}
+              <TextField
+                label="Display subtitle"
+                value={placement.subtitle}
+                onChange={(subtitle) =>
+                  onChange({
+                    ...scenario,
+                    participantPlacements: scenario.participantPlacements.map(
+                      (p) => (p === placement ? { ...p, subtitle } : p),
+                    ),
+                  })
+                }
+              />
+              <TextField
+                label="Badges (comma separated)"
+                value={placement.badges.join(", ")}
+                onChange={(value) =>
+                  onChange({
+                    ...scenario,
+                    participantPlacements: scenario.participantPlacements.map(
+                      (p) =>
+                        p === placement
+                          ? {
+                              ...p,
+                              badges: value
+                                .split(",")
+                                .slice(0, 6)
+                                .map((b) => b.trim()),
+                            }
+                          : p,
+                    ),
+                  })
+                }
+              />
+            </section>
+            <section
+              className="inspector-group"
+              aria-label="Shared participant details"
+            >
+              <h3>Shared participant details</h3>
+              {(
+                [
+                  ["description", "Description"],
+                  ["domain", "Business domain"],
+                  ["owner", "Owner"],
+                  ["location", "Deployment location"],
+                  ["trustZone", "Trust zone"],
+                  ["lifecycle", "Lifecycle"],
+                ] as const
+              ).map(([key, label]) => (
+                <TextField
+                  key={key}
+                  label={label}
+                  value={participant[key]}
+                  multiline={key === "description"}
+                  maxLength={key === "description" ? 2000 : 120}
+                  onChange={(value) =>
+                    onCatalog(
+                      catalog.map((p) =>
+                        p.id === selected ? { ...p, [key]: value } : p,
+                      ),
+                    )
+                  }
+                />
+              ))}
+            </section>
             <button
               className="secondary danger"
               onClick={() => {

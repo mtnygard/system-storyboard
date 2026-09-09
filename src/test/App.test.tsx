@@ -133,13 +133,11 @@ it("creates a scenario, participants and a five-step flow entirely through the i
 });
 it("starts static for reduced-motion users", async () => {
   const original = window.matchMedia;
-  window.matchMedia = vi
-    .fn()
-    .mockImplementation((query) => ({
-      matches: query === "(prefers-reduced-motion: reduce)",
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
+  window.matchMedia = vi.fn().mockImplementation((query) => ({
+    matches: query === "(prefers-reduced-motion: reduce)",
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: /Order to SAP/ }));
   expect(
@@ -302,4 +300,111 @@ it("composes a step with an inline-created participant and creates an editable r
     "Return availability",
   );
   expect(within(preview()).getByText("Preview up to date")).toBeInTheDocument();
+});
+
+it("changes boundary orientation, saves it, and restores the horizontal diagram after reload", async () => {
+  const user = userEvent.setup();
+  const view = render(<App />);
+  await user.click(screen.getByRole("button", { name: /Order to SAP/ }));
+  await user.click(screen.getByRole("button", { name: /Participants 02/ }));
+  await user.selectOptions(
+    screen.getAllByRole("combobox", { name: "Boundary layout" })[1],
+    "horizontal",
+  );
+  const diagram = preview().querySelector("svg")!.outerHTML;
+  const boxes = [...preview().querySelectorAll<SVGRectElement>(".lanebox")];
+  expect(Number(boxes[2].getAttribute("width"))).toBeGreaterThan(
+    Number(boxes[0].getAttribute("width")),
+  );
+  expect(Number(boxes[2].getAttribute("y"))).toBeGreaterThan(
+    Number(boxes[0].getAttribute("y")),
+  );
+  await waitFor(() => {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    expect(saved.scenarios[0].boundaries[1].orientation).toBe("horizontal");
+  });
+  view.unmount();
+  render(<App />);
+  await user.click(screen.getByRole("button", { name: /Order to SAP/ }));
+  await user.click(screen.getByRole("button", { name: /Participants 02/ }));
+  expect(
+    screen.getAllByRole("combobox", { name: "Boundary layout" })[1],
+  ).toHaveValue("horizontal");
+  expect(preview().querySelector("svg")!.outerHTML).toBe(diagram);
+});
+
+it("edits placement display hints in the participant inspector and persists them across reloads", async () => {
+  const user = userEvent.setup();
+  const view = render(<App />);
+  await user.click(screen.getByRole("button", { name: /Order to SAP/ }));
+  await user.click(screen.getByRole("button", { name: "Select Customer" }));
+  const hints = within(screen.getByRole("region", { name: "Display hints" }));
+  const stretch = hints.getByRole("checkbox", { name: "Stretch to fill" });
+  expect(stretch).not.toBeChecked();
+  await user.click(stretch);
+  expect(stretch).toBeChecked();
+  expect(within(preview()).getByText("Preview up to date")).toBeInTheDocument();
+  await waitFor(() => {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    expect(
+      saved.scenarios[0].participantPlacements[0].displayHints.stretchToFill,
+    ).toBe(true);
+    expect(saved.participants[0].displayHints).toBeUndefined();
+  });
+  view.unmount();
+  render(<App />);
+  await user.click(screen.getByRole("button", { name: /Order to SAP/ }));
+  await user.click(screen.getByRole("button", { name: "Select Customer" }));
+  expect(
+    screen.getByRole("checkbox", { name: "Stretch to fill" }),
+  ).toBeChecked();
+  await user.click(screen.getByRole("checkbox", { name: "Stretch to fill" }));
+  expect(within(preview()).getByText("Preview up to date")).toBeInTheDocument();
+});
+
+it("persists dragged interaction order, updates sequence steps, and supports Undo", async () => {
+  const user = userEvent.setup();
+  const view = render(<App />);
+  await user.click(screen.getByRole("button", { name: /Order to SAP/ }));
+  const dragFirstAfterThird = () => {
+    const dataTransfer = { setData: vi.fn(), setDragImage: vi.fn() };
+    fireEvent.dragStart(
+      screen.getByRole("button", { name: "Drag interaction 1 to reorder" }),
+      { dataTransfer },
+    );
+    fireEvent.drop(
+      screen
+        .getByRole("button", { name: "Drag interaction 3 to reorder" })
+        .closest("tr")!,
+      { dataTransfer },
+    );
+  };
+  dragFirstAfterThird();
+  expect(
+    screen.getByRole("textbox", { name: "Action for step 3" }),
+  ).toHaveValue("Submit order");
+  await user.click(screen.getByRole("button", { name: "Undo" }));
+  expect(
+    screen.getByRole("textbox", { name: "Action for step 1" }),
+  ).toHaveValue("Submit order");
+  dragFirstAfterThird();
+  await waitFor(() => {
+    const w = WorkspaceSchema.parse(
+      JSON.parse(localStorage.getItem(STORAGE_KEY)!),
+    );
+    expect(w.scenarios[0].interactions[2].action).toBe("Submit order");
+    const compiled = compileScenario(
+      w.scenarios[0],
+      w.participants,
+      "transition",
+    );
+    if (!compiled.ok) throw Error(compiled.messages.join());
+    expect(compiled.graph.flows[0].messages[2].label).toContain("Submit order");
+  });
+  view.unmount();
+  render(<App />);
+  await user.click(screen.getByRole("button", { name: /Order to SAP/ }));
+  expect(
+    screen.getByRole("textbox", { name: "Action for step 3" }),
+  ).toHaveValue("Submit order");
 });

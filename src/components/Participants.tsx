@@ -182,6 +182,19 @@ export function Participants({
               value={b.subtitle}
               onChange={(subtitle) => updateBoundary(b.id, { subtitle })}
             />
+            <Field label="Boundary layout">
+              <select
+                value={b.orientation || "vertical"}
+                onChange={(e) =>
+                  updateBoundary(b.id, {
+                    orientation: e.target.value as Boundary["orientation"],
+                  })
+                }
+              >
+                <option value="vertical">Vertical column</option>
+                <option value="horizontal">Horizontal platform</option>
+              </select>
+            </Field>
             <Field label="Classification">
               <select
                 value={b.dimension}
@@ -199,27 +212,46 @@ export function Participants({
             <div className="placed-list">
               {scenario.participantPlacements
                 .filter((p) => p.boundaryId === b.id)
-                .map((p) => (
-                  <button
-                    key={p.participantId}
-                    className="placed-participant"
-                    onClick={() => onSelect(p.participantId)}
-                  >
-                    <span>
-                      {catalog.find((c) => c.id === p.participantId)?.name ||
-                        "Unnamed participant"}
-                      <small>
-                        {p.current && p.target
-                          ? "Both states"
-                          : p.current
-                            ? "Current only"
-                            : p.target
-                              ? "Target only"
-                              : "Hidden"}
-                      </small>
-                    </span>
-                    <ChevronRight size={15} />
-                  </button>
+                .map((p, index, placements) => (
+                  <div className="placed-participant-row" key={p.participantId}>
+                    <button
+                      className="placed-participant"
+                      onClick={() => onSelect(p.participantId)}
+                    >
+                      <span>
+                        {catalog.find((c) => c.id === p.participantId)?.name ||
+                          "Unnamed participant"}
+                        <small>
+                          {p.current && p.target
+                            ? "Both states"
+                            : p.current
+                              ? "Current only"
+                              : p.target
+                                ? "Target only"
+                                : "Hidden"}
+                        </small>
+                      </span>
+                      <ChevronRight size={15} />
+                    </button>
+                    <OrderButtons
+                      index={index}
+                      count={placements.length}
+                      label={`participant ${catalog.find((c) => c.id === p.participantId)?.name || "Unnamed participant"}`}
+                      onMove={(direction) => {
+                        const ordered = reorder(placements, index, direction);
+                        let next = 0;
+                        onChange({
+                          ...scenario,
+                          participantPlacements:
+                            scenario.participantPlacements.map((placement) =>
+                              placement.boundaryId === b.id
+                                ? ordered[next++]
+                                : placement,
+                            ),
+                        });
+                      }}
+                    />
+                  </div>
                 ))}
             </div>
           </div>

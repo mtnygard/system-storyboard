@@ -1,3 +1,4 @@
+import { useInteractionRowDrag } from "./useInteractionRowDrag";
 import { OverrideIcon } from "./OverrideIcon";
 import {
   effectiveInteraction,
@@ -14,7 +15,7 @@ import { focusInteractionDetail } from "./interaction-focus";
 import { useState } from "react";
 import { QuickCapture } from "./QuickCapture";
 import { missingDetails } from "../domain/drafts";
-import { Copy, Star, Plus } from "lucide-react";
+import { Copy, Star, Plus, GripVertical } from "lucide-react";
 import {
   newInteraction,
   patterns,
@@ -51,6 +52,13 @@ export function InteractionTable({
   const state = scenario.mode === "transition" ? editingState : scenario.mode;
   const visible = interactionsFor(scenario, state).map((i) =>
     effectiveInteraction(i, state),
+  );
+  const rowDrag = useInteractionRowDrag(
+    scenario,
+    visible,
+    state,
+    onChange,
+    onSelect,
   );
   const pending = visible.filter((i) => missingDetails(i).length > 0);
   const targetExists = scenario.interactions.some((i) => i.target);
@@ -99,7 +107,10 @@ export function InteractionTable({
           <h2>
             Interactions <span className="count">{visible.length}</span>
           </h2>
-          <p>Tell the story in order. Select a row for operational details.</p>
+          <p>
+            Drag the row handles to reorder the story. Select a row for
+            operational details.
+          </p>
         </div>
         <button
           className="primary small"
@@ -227,12 +238,34 @@ export function InteractionTable({
             {visible.map((i, n) => (
               <tr
                 key={i.id}
-                className={selected === i.id ? "selected" : ""}
+                className={[
+                  selected === i.id ? "selected" : "",
+                  rowDrag.draggingId === i.id ? "dragging" : "",
+                  rowDrag.target?.id === i.id
+                    ? `drop-${rowDrag.target.side}`
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                onDragOver={(event) => rowDrag.over(i.id, event)}
+                onDrop={(event) => rowDrag.drop(i.id, event)}
                 onFocus={() => onSelect(i.id)}
                 onClick={() => onSelect(i.id)}
               >
                 <td>
                   <div className="inline">
+                    <button
+                      type="button"
+                      className="icon-button row-drag-handle"
+                      draggable={visible.length > 1}
+                      disabled={visible.length < 2}
+                      aria-label={`Drag interaction ${n + 1} to reorder`}
+                      title="Drag to reorder. Up/down buttons are also available."
+                      onDragStart={(event) => rowDrag.start(i.id, event)}
+                      onDragEnd={rowDrag.finish}
+                    >
+                      <GripVertical size={16} />
+                    </button>
                     <button
                       className="row-number"
                       aria-label={`Select interaction ${n + 1}`}
@@ -441,11 +474,6 @@ export function InteractionTable({
           </tbody>
         </table>
       </div>
-      {!visible.length && (
-        <div className="empty-inline">
-          Start with the business trigger. Who does what, and who receives it?
-        </div>
-      )}
     </section>
   );
 }

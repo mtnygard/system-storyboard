@@ -9,6 +9,7 @@ import {
   type State,
 } from "../domain/model";
 import { Field } from "./Controls";
+import { parseCaptureLine } from "../domain/quick-capture";
 
 function ParticipantChoice({
   label,
@@ -81,30 +82,44 @@ export function QuickCapture({
   const [to, setTo] = useState("");
   const [notice, setNotice] = useState("");
   const input = useRef<HTMLTextAreaElement>(null);
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => parseCaptureLine(line, catalog));
+  const resolve = (value: string) =>
+    catalog.filter(
+      (p) =>
+        value.trim() &&
+        p.name.trim().toLowerCase() === value.trim().toLowerCase(),
+    );
+  const parsed = lines.map((line) => ({
+    ...line,
+    fromParticipantId:
+      (structured && resolve(from)[0]?.id) || line.fromParticipantId,
+    toParticipantId: (structured && resolve(to)[0]?.id) || line.toParticipantId,
+  }));
+  const participantName = (id: string) =>
+    catalog.find((p) => p.id === id)?.name;
   function add() {
-    const actions = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    if (!actions.length) return;
-    if (actions.some((action) => action.length > 120)) {
+    if (!parsed.length) return;
+    const error = parsed.find((line) => line.error)?.error;
+    if (error) {
+      setNotice(error);
+      return;
+    }
+    if (parsed.some(({ action }) => action.length > 120)) {
       setNotice(
         "Keep each action within 120 characters. Your text is still here to edit.",
       );
       return;
     }
-    if (actions.length + scenario.interactions.length > 64) {
+    if (parsed.length + scenario.interactions.length > 64) {
       setNotice(
         "Capture up to 64 steps in a scenario. Split longer stories into another scenario.",
       );
       return;
     }
-    const resolve = (value: string) =>
-      catalog.filter(
-        (p) =>
-          value.trim() &&
-          p.name.trim().toLowerCase() === value.trim().toLowerCase(),
-      );
     if (
       structured &&
       [from, to].some((value) => value.trim() && resolve(value).length !== 1)
@@ -114,10 +129,20 @@ export function QuickCapture({
       );
       return;
     }
-    const sender = structured ? resolve(from)[0]?.id || "" : "";
-    const receiver = structured ? resolve(to)[0]?.id || "" : "";
+    const interactions = parsed.map(
+      ({ action, fromParticipantId, toParticipantId }) => ({
+        ...newInteraction(captureState),
+        action,
+        fromParticipantId,
+        toParticipantId,
+      }),
+    );
     const placements = [...scenario.participantPlacements];
-    for (const participantId of new Set([sender, receiver].filter(Boolean)))
+    const endpoints = interactions.flatMap((i) => [
+      i.fromParticipantId,
+      i.toParticipantId,
+    ]);
+    for (const participantId of new Set(endpoints.filter(Boolean)))
       if (!placements.some((p) => p.participantId === participantId))
         placements.push(
           newPlacement(
@@ -126,12 +151,6 @@ export function QuickCapture({
             captureState,
           ),
         );
-    const interactions = actions.map((action) => ({
-      ...newInteraction(captureState),
-      action,
-      fromParticipantId: sender,
-      toParticipantId: receiver,
-    }));
     onChange({
       ...scenario,
       participantPlacements: placements,
@@ -139,7 +158,7 @@ export function QuickCapture({
     });
     setText("");
     setNotice(
-      `${actions.length} ${actions.length === 1 ? "step captured" : "steps captured"}. Complete details whenever you are ready.`,
+      `${parsed.length} ${parsed.length === 1 ? "step captured" : "steps captured"}. Complete details whenever you are ready.`,
     );
     input.current?.focus();
   }
@@ -153,8 +172,9 @@ export function QuickCapture({
         <div>
           <h3>Quick capture</h3>
           <p>
-            Write an action or paste a story, one step per line. Details can
-            wait.
+            Type sender, action, and receiver using existing participant names,
+            one step per line. Quotes around names are optional. You can also
+            capture just an action.
           </p>
         </div>
         <button
@@ -207,12 +227,20 @@ export function QuickCapture({
             )}
           </div>
         )}
-        <Field label="Actions to capture">
+        <Field
+          label="Actions to capture"
+          hint={
+            structured
+              ? "Selected participants override names parsed from each line. Blank selections use the parsed names."
+              : "Start with the sender’s full name and end with the receiver’s full name. The text between them becomes the action."
+          }
+        >
           <textarea
+            aria-label="Actions to capture"
             ref={input}
             value={text}
             placeholder={
-              "Customer submits order\nCheck inventory\nPublish order"
+              '"Customer Portal" calls "Order Service"\nCheck inventory'
             }
             rows={3}
             onChange={(e) => setText(e.target.value)}
@@ -228,6 +256,44 @@ export function QuickCapture({
             }}
           />
         </Field>
+        {parsed.length > 0 && (
+          <div
+            className="capture-parse-preview"
+            role="region"
+            aria-label="Capture preview"
+            aria-live="polite"
+          >
+            <strong>Will capture</strong>
+            <ol>
+              {parsed.map((line, index) => (
+                <li key={index}>
+                  {line.error ? (
+                    line.error
+                  ) : (
+                    <>
+                      <span>
+                        From:{" "}
+                        {participantName(line.fromParticipantId) ||
+                          "Not assigned"}
+                      </span>
+                      <span>Action: {line.action}</span>
+                      <span>
+                        To:{" "}
+                        {participantName(line.toParticipantId) ||
+                          "Not assigned"}
+                      </span>
+                      {!line.fromParticipantId && !line.toParticipantId && (
+                        <small>
+                          Action only — no matching sender and receiver found.
+                        </small>
+                      )}
+                    </>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
         <div className="capture-footer">
           <small>
             Enter to capture · Shift+Enter for another line ·{" "}

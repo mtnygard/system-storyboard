@@ -11,7 +11,8 @@ import {
   validateWorkspace,
 } from "./storage";
 import { architectureChecks } from "./checks";
-import { compileScenario } from "../adapter/compiler";
+import { compileScenario, renderPreview } from "../adapter/compiler";
+import type { Scenario, Participant } from "./model";
 describe("workspace persistence and imports", () => {
   it("round trips all enterprise metadata through an isolated scenario copy", () => {
     const w = seedWorkspace();
@@ -32,6 +33,112 @@ describe("workspace persistence and imports", () => {
       compileScenario(next.scenarios[1], next.participants, "transition").ok,
     ).toBe(true);
   });
+  it.each(["empty", "existing"] as const)(
+    "round trips visual properties and diagram geometry into an %s workspace",
+    (destination) => {
+      const source = seedWorkspace();
+      const scenario = source.scenarios[0];
+      scenario.boundaries.forEach((boundary, index) => {
+        boundary.orientation = index === 1 ? "horizontal" : "vertical";
+      });
+      scenario.participantPlacements.forEach((placement, index) => {
+        placement.displayHints = { stretchToFill: index % 2 === 0 };
+        placement.subtitle = `Display subtitle ${index + 1}`;
+        placement.badges = [`Badge ${index + 1}`];
+      });
+      // The saved order, rather than catalog or creation order, drives the layout.
+      [scenario.participantPlacements[0], scenario.participantPlacements[1]] = [
+        scenario.participantPlacements[1],
+        scenario.participantPlacements[0],
+      ];
+      const before = JSON.stringify(source);
+      const file = JSON.stringify(
+        scenarioExport(scenario, source.participants),
+      );
+      const serialized = JSON.parse(file);
+      expect(serialized.scenario.boundaries[1].orientation).toBe("horizontal");
+      expect(
+        serialized.scenario.participantPlacements.map(
+          (p: (typeof scenario.participantPlacements)[number]) =>
+            p.displayHints?.stretchToFill,
+        ),
+      ).toEqual([false, true, true, false, true, false]);
+
+      const target =
+        destination === "empty"
+          ? { ...source, scenarios: [], participants: [] }
+          : source;
+      const imported = importScenario(file, target);
+      const copy = imported.scenarios.at(-1)!;
+      const originalIds = scenario.participantPlacements.map(
+        (p) => p.participantId,
+      );
+      const copiedIds = copy.participantPlacements.map((p) => p.participantId);
+      expect(copiedIds.every((id) => !originalIds.includes(id))).toBe(true);
+      expect(copy.boundaries).toEqual(scenario.boundaries);
+      expect(
+        copy.participantPlacements.map((p, index) => ({
+          ...p,
+          participantId: originalIds[index],
+        })),
+      ).toEqual(scenario.participantPlacements);
+      expect(
+        copiedIds.map(
+          (id) => imported.participants.find((p) => p.id === id)?.name,
+        ),
+      ).toEqual(
+        originalIds.map(
+          (id) => source.participants.find((p) => p.id === id)?.name,
+        ),
+      );
+
+      for (const state of ["current", "target", "transition"] as const) {
+        const compile = (s: Scenario, catalog: Participant[]) => {
+          const result = compileScenario(s, catalog, state);
+          if (!result.ok) throw Error(result.messages.join());
+          return result;
+        };
+        const a = compile(scenario, source.participants);
+        const b = compile(copy, imported.participants);
+        for (const theme of ["light", "dark"] as const) {
+          for (const lens of ["architecture", "data-flow"] as const) {
+            const original = renderPreview(
+              a.graph,
+              lens,
+              theme,
+              a.horizontalBoundaryIds,
+              a.stretchParticipantIds,
+            )!;
+            const restored = renderPreview(
+              b.graph,
+              lens,
+              theme,
+              b.horizontalBoundaryIds,
+              b.stretchParticipantIds,
+            )!;
+            expect(restored.width).toBe(original.width);
+            expect(restored.height).toBe(original.height);
+            expect(restored.atlas.lanes).toEqual(original.atlas.lanes);
+            expect(restored.atlas.edges).toEqual(original.atlas.edges);
+            expect(copiedIds.map((id) => restored.atlas.nodes[id])).toEqual(
+              originalIds.map((id) => original.atlas.nodes[id]),
+            );
+            expect(restored.svg).toBe(original.svg);
+          }
+        }
+      }
+      // Import and a second export retain every display property, including false.
+      const secondFile = JSON.stringify(
+        scenarioExport(copy, imported.participants),
+      );
+      const secondCopy = importScenario(secondFile, target).scenarios.at(-1)!;
+      expect(secondCopy.boundaries).toEqual(scenario.boundaries);
+      expect(
+        secondCopy.participantPlacements.map((p) => p.displayHints),
+      ).toEqual(scenario.participantPlacements.map((p) => p.displayHints));
+      expect(JSON.stringify(source)).toBe(before);
+    },
+  );
   it("persists drafts and reloads the saved workspace", () => {
     const w = seedWorkspace();
     w.scenarios[0].interactions[0].action = "";

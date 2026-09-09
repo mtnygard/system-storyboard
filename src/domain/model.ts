@@ -55,6 +55,7 @@ export const ParticipantSchema = z.object({
   lifecycle: name.default(""),
 });
 export const BoundarySchema = z.object({
+  orientation: z.enum(["vertical", "horizontal"]).optional(),
   id,
   name,
   subtitle: name.default(""),
@@ -62,6 +63,9 @@ export const BoundarySchema = z.object({
   order: z.number().int().min(0),
 });
 export const PlacementSchema = z.object({
+  displayHints: z
+    .object({ stretchToFill: z.boolean().default(false) })
+    .optional(),
   participantId: id,
   boundaryId: z.string().max(100),
   ...presence,

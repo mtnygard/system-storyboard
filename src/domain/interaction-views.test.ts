@@ -4,6 +4,7 @@ import {
   populateTarget,
   interactionsFor,
   moveVisible,
+  moveVisibleTo,
 } from "./interaction-views";
 it("initializes target with shared identities and placements without overwriting an existing target", () => {
   const s = seedWorkspace().scenarios[0];
@@ -39,4 +40,30 @@ it("reorders filtered interactions without losing hidden rows", () => {
     if (!i.target) expect(result[index]).toBe(i);
   });
   expect(new Set(result.map((i) => i.id)).size).toBe(s.interactions.length);
+});
+
+it("inserts across multiple visible slots using original records, including target overrides", () => {
+  const scenario = seedWorkspace().scenarios[0];
+  const raw = scenario.interactions;
+  const visible = interactionsFor(scenario, "target").map((i) => ({
+    ...i,
+    action: "Projected target text",
+  }));
+  raw[0].targetOverrides = { action: "A target override" };
+  const ids = visible.map((i) => i.id);
+  const result = moveVisibleTo(scenario, visible, 0, visible.length - 1);
+  expect(result.filter((i) => i.target).map((i) => i.id)).toEqual([
+    ...ids.slice(1),
+    ids[0],
+  ]);
+  raw.forEach((i, index) => {
+    if (!i.target) expect(result[index]).toBe(i);
+    expect(result.find((next) => next.id === i.id)).toBe(i);
+  });
+  expect(result.find((i) => i.id === raw[0].id)?.targetOverrides).toEqual({
+    action: "A target override",
+  });
+  expect(moveVisibleTo(scenario, visible, -1, 0)).toBe(raw);
+  expect(moveVisibleTo(scenario, visible, 0, visible.length)).toBe(raw);
+  expect(moveVisibleTo(scenario, visible, 1, 1)).toBe(raw);
 });
