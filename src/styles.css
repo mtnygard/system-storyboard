@@ -276,6 +276,7 @@ button.secondary,
 }
 .home-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   padding: 28px 0;
   border-bottom: 1px solid var(--line);
@@ -1998,4 +1999,27 @@ dialog h3 + .export-option {
 }
 .interaction-table tr.drop-after > td {
   box-shadow: inset 0 -3px var(--accent);
+}
+
+.placed-participant-row {
+  position: relative;
+}
+.placed-participant-row.dragging {
+  opacity: 0.45;
+}
+.placed-participant-row.drop-before::before,
+.placed-participant-row.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.placed-participant-row.drop-before::before {
+  top: -4px;
+}
+.placed-participant-row.drop-after::after {
+  bottom: -4px;
 }

@@ -54,7 +54,9 @@ You can also add interactions from a CSV file. Use the column headings `From,Act
 
 ## Save your work
 
-Studio saves your edits in your browser as you work. Use **Export → Studio scenario** to save a complete editable backup as a `.studio.json` file. **Import scenario** restores boundary orientation, participant order, display hints (including **Stretch to fill**), subtitles, badges, interactions, and walkthroughs. CSV import adds interaction rows only; use the JSON scenario file to move the complete scenario between workspaces.
+Studio saves your edits in your browser as you work. From **All scenarios**, choose **Export workspace** to save every scenario and the full shared participant catalog in one `.workspace.studio.json` file. **Import workspace** previews the workspace name and counts before replacing the current workspace; you can cancel or export your current workspace before confirming. Shared participant links, unused catalog entries, and unfinished drafts are preserved.
+
+Use **Export → Studio scenario** to save a complete editable backup as a `.studio.json` file. **Import scenario** restores boundary orientation, participant order, display hints (including **Stretch to fill**), subtitles, badges, interactions, and walkthroughs. CSV import adds interaction rows only; use the JSON scenario file to move the complete scenario between workspaces.
 
 ## Limits
 

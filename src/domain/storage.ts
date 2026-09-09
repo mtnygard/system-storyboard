@@ -67,6 +67,26 @@ export const scenarioExport = (s: Scenario, participants: Participant[]) => ({
     s.participantPlacements.some((x) => x.participantId === p.id),
   ),
 });
+export const workspaceExport = (workspace: Workspace) => ({
+  format: "integration-scenario-studio-workspace",
+  version: 1,
+  workspace: validateWorkspace(workspace),
+});
+const WorkspaceImportSchema = z.object({
+  format: z.literal("integration-scenario-studio-workspace"),
+  version: z.literal(1),
+  workspace: WorkspaceSchema,
+});
+export function importWorkspace(raw: string): Workspace {
+  try {
+    const doc = WorkspaceImportSchema.parse(JSON.parse(raw));
+    return validateWorkspace(doc.workspace);
+  } catch {
+    throw Error(
+      "This file is not a supported Studio workspace. Choose a workspace JSON exported from this app.",
+    );
+  }
+}
 const ImportSchema = z.object({
   format: z.literal("integration-scenario-studio"),
   version: z.literal(1),

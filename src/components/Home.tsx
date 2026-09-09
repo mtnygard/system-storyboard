@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Plus,
   Upload,
+  Download,
   FolderOpen,
   Users,
   ArrowLeft,
@@ -19,6 +20,8 @@ export function Home({
   onOpen,
   onCreate,
   onImport,
+  onImportWorkspace,
+  onExportWorkspace,
   onReset,
   onClear,
   onChange,
@@ -27,6 +30,8 @@ export function Home({
   onOpen: (id: string) => void;
   onCreate: () => void;
   onImport: () => void;
+  onImportWorkspace: () => void;
+  onExportWorkspace: () => void;
   onReset: () => void;
   onClear: () => void;
   onChange: (w: Workspace) => void;
@@ -89,10 +94,20 @@ export function Home({
           {catalog ? "Back to scenarios" : "Participant catalog"}
         </button>
         {!catalog && (
-          <button className="text-button" onClick={onImport}>
-            <Upload size={17} />
-            Import scenario
-          </button>
+          <>
+            <button className="text-button" onClick={onImport}>
+              <Upload size={17} />
+              Import scenario
+            </button>
+            <button className="text-button" onClick={onImportWorkspace}>
+              <Upload size={17} />
+              Import workspace
+            </button>
+            <button className="text-button" onClick={onExportWorkspace}>
+              <Download size={17} />
+              Export workspace
+            </button>
+          </>
         )}
       </div>
       {catalog ? (
@@ -250,8 +265,9 @@ export function Home({
           <div className="local-note">
             <strong>Your workspace stays in this browser.</strong>
             <p>
-              No account or AI service is needed. Export scenarios to keep a
-              backup or move them to another browser.
+              No account or AI service is needed. Export your workspace to back
+              up every scenario and the participant catalog in one file, or move
+              them to another browser.
             </p>
             <div className="inline workspace-actions">
               <button

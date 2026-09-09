@@ -50,6 +50,8 @@ import {
   saveWorkspace,
   scenarioExport,
   importScenario,
+  workspaceExport,
+  importWorkspace,
   importCsv,
   download,
   STORAGE_KEY,
@@ -116,6 +118,8 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<PreviewSnapshot>();
   const [activeStep, setActiveStep] = useState(-1);
   const [tourPlaying, setTourPlaying] = useState(false);
+  const [pendingWorkspace, setPendingWorkspace] = useState<Workspace>();
+  const workspaceInput = useRef<HTMLInputElement>(null);
   const jsonInput = useRef<HTMLInputElement>(null);
   const csvInput = useRef<HTMLInputElement>(null);
   const scenario = workspace.scenarios.find((s) => s.id === activeId);
@@ -148,7 +152,7 @@ export default function App() {
       setSaveError(
         success
           ? ""
-          : "This browser could not save your changes. Export the scenario now to keep a copy.",
+          : "This browser could not save your changes. Export your workspace from All scenarios to keep a copy.",
       );
     }, 350);
     return () => clearTimeout(timer);
@@ -196,6 +200,24 @@ export default function App() {
     if (name !== "Walkthrough") {
       setActiveStep(-1);
       setTourPlaying(false);
+    }
+  }
+  function exportWorkspace() {
+    download(
+      `${workspace.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() || "workspace"}.workspace.studio.json`,
+      JSON.stringify(workspaceExport(workspace), null, 2),
+    );
+  }
+  async function readWorkspaceImport(file: File | undefined) {
+    if (!file) return;
+    try {
+      setPendingWorkspace(importWorkspace(await file.text()));
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The workspace file could not be read.",
+      );
     }
   }
   async function readImport(file: File | undefined, csv = false) {
@@ -397,6 +419,17 @@ export default function App() {
         </div>
       )}
       <input
+        ref={workspaceInput}
+        hidden
+        type="file"
+        accept=".json,application/json"
+        aria-label="Import Studio workspace file"
+        onChange={(e) => {
+          void readWorkspaceImport(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+      <input
         ref={jsonInput}
         hidden
         type="file"
@@ -428,6 +461,8 @@ export default function App() {
             setModal("create");
           }}
           onImport={() => jsonInput.current?.click()}
+          onImportWorkspace={() => workspaceInput.current?.click()}
+          onExportWorkspace={exportWorkspace}
           onReset={() => setModal("reset")}
           onClear={() => setModal("clear")}
         />
@@ -738,6 +773,55 @@ export default function App() {
             <X size={17} />
           </button>
         </div>
+      )}
+      {pendingWorkspace && (
+        <Modal
+          title="Import workspace?"
+          onClose={() => setPendingWorkspace(undefined)}
+        >
+          <p>
+            Import “{pendingWorkspace.name}” with{" "}
+            {pendingWorkspace.scenarios.length} scenarios and{" "}
+            {pendingWorkspace.participants.length} catalog participants?
+          </p>
+          <p>
+            This replaces all {workspace.scenarios.length} scenarios and{" "}
+            {workspace.participants.length} catalog participants in this
+            browser. Export your current workspace first to keep a backup.
+          </p>
+          <div className="modal-actions">
+            <button
+              autoFocus
+              className="secondary"
+              onClick={() => setPendingWorkspace(undefined)}
+            >
+              Cancel
+            </button>
+            <button className="secondary" onClick={exportWorkspace}>
+              Export current workspace
+            </button>
+            <button
+              className="primary"
+              onClick={() => {
+                protection.current = false;
+                change(pendingWorkspace);
+                history.current = [];
+                setActiveId(undefined);
+                setSelected(undefined);
+                setSnapshot(undefined);
+                setActiveStep(-1);
+                setTourPlaying(false);
+                setExportResult(undefined);
+                setPendingWorkspace(undefined);
+                setMessage(
+                  "Workspace imported. All scenarios and catalog participants restored.",
+                );
+              }}
+            >
+              Replace workspace
+            </button>
+          </div>
+        </Modal>
       )}
       {modal === "csv" && (
         <Modal title="Import interactions" onClose={() => setModal(null)}>
