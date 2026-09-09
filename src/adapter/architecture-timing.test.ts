@@ -83,6 +83,9 @@ describe("architecture story clock", () => {
   it("keeps fully static architecture and sequence output untouched", () => {
     const graph = fixture();
     graph.edges.forEach((e) => (e.animated = false));
+    graph.flows.forEach((flow) =>
+      flow.messages.forEach((message) => (message.animated = false)),
+    );
     expect(renderPreview(graph, "architecture")!.svg).toBe(
       render(graph, { lens: "architecture", theme: "light" }).svg,
     );

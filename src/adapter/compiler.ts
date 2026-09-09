@@ -3,6 +3,7 @@ import { isPendingDraft } from "../domain/drafts";
 import { sequenceParticipantOrder } from "../domain/sequence-order";
 import { renderPlatforms } from "./platform-renderer";
 import { sequenceArchitectureTraffic } from "./architecture-timing";
+import { highlightTraffic } from "./traffic-highlights";
 import {
   safeParseGraphDoc,
   SCHEMA_VERSION,
@@ -325,7 +326,10 @@ export function renderPreview(
           stretchParticipantIds,
         )
       : render(graph, { lens, theme });
-  return lens === "architecture"
-    ? sequenceArchitectureTraffic(graph, rendered)
-    : rendered;
+  return highlightTraffic(
+    graph,
+    lens === "architecture"
+      ? sequenceArchitectureTraffic(graph, rendered)
+      : rendered,
+  );
 }
