@@ -238,6 +238,7 @@ export function InteractionTable({
             {visible.map((i, n) => (
               <tr
                 key={i.id}
+                data-reorder-row
                 className={[
                   selected === i.id ? "selected" : "",
                   rowDrag.draggingId === i.id ? "dragging" : "",

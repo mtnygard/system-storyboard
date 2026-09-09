@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
-import { STORAGE_KEY } from "../domain/storage";
+import { STORAGE_KEY, scenarioExport, importScenario } from "../domain/storage";
 import { compileScenario } from "../adapter/compiler";
 import { WorkspaceSchema } from "../domain/model";
 const preview = () =>
@@ -407,4 +407,91 @@ it("persists dragged interaction order, updates sequence steps, and supports Und
   expect(
     screen.getByRole("textbox", { name: "Action for step 3" }),
   ).toHaveValue("Submit order");
+});
+
+it("persists participant drag moves with Undo, diagram updates, and scenario export/import", async () => {
+  const user = userEvent.setup();
+  const view = render(<App />);
+  await user.click(screen.getByRole("button", { name: /Order to SAP/ }));
+  await user.click(screen.getByRole("button", { name: /Participants 02/ }));
+  const boundaryCard = (name: string) =>
+    screen
+      .getAllByRole("textbox", { name: "Boundary name" })
+      .find((input) => (input as HTMLInputElement).value === name)!
+      .closest<HTMLElement>(".boundary-card")!;
+  const dragHandle = (name: string) =>
+    screen.getByRole("button", { name: `Drag participant ${name} to reorder` });
+  const moveCustomer = () => {
+    const dataTransfer = { setData: vi.fn(), setDragImage: vi.fn() };
+    fireEvent.dragStart(dragHandle("Customer"), { dataTransfer });
+    fireEvent.drop(dragHandle("Order Events").closest("[data-reorder-row]")!, {
+      dataTransfer,
+    });
+  };
+  moveCustomer();
+  expect(
+    within(boundaryCard("Integration")).getByRole("button", {
+      name: "Drag participant Customer to reorder",
+    }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Boundary" })).toHaveValue(
+    "b-integration",
+  );
+  expect(within(preview()).getByText("Preview up to date")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Undo" }));
+  expect(
+    within(boundaryCard("Commerce")).getByRole("button", {
+      name: "Drag participant Customer to reorder",
+    }),
+  ).toBeInTheDocument();
+  moveCustomer();
+  const diagram = preview().querySelector("svg")!.outerHTML;
+  await waitFor(() => {
+    const workspace = WorkspaceSchema.parse(
+      JSON.parse(localStorage.getItem(STORAGE_KEY)!),
+    );
+    const scenario = workspace.scenarios[0];
+    expect(
+      scenario.participantPlacements
+        .filter((p) => p.boundaryId === "b-integration")
+        .map((p) => p.participantId),
+    ).toEqual(["p-esb", "p-events", "p-customer", "p-service"]);
+    const compiled = compileScenario(
+      scenario,
+      workspace.participants,
+      "transition",
+    );
+    if (!compiled.ok) throw Error(compiled.messages.join());
+    expect(compiled.graph.nodes.find((p) => p.id === "p-customer")?.lane).toBe(
+      "b-integration",
+    );
+    const exported = scenarioExport(scenario, workspace.participants);
+    const imported = importScenario(JSON.stringify(exported), {
+      ...workspace,
+      scenarios: [],
+      participants: [],
+    });
+    const originalIdsByName = new Map(
+      workspace.participants.map((p) => [p.name, p.id]),
+    );
+    const importedIds = new Map(
+      imported.participants.map((p) => [p.id, originalIdsByName.get(p.name)]),
+    );
+    expect(
+      imported.scenarios[0].participantPlacements.map((p) => ({
+        ...p,
+        participantId: importedIds.get(p.participantId),
+      })),
+    ).toEqual(scenario.participantPlacements);
+  });
+  view.unmount();
+  render(<App />);
+  await user.click(screen.getByRole("button", { name: /Order to SAP/ }));
+  await user.click(screen.getByRole("button", { name: /Participants 02/ }));
+  expect(
+    within(boundaryCard("Integration")).getByRole("button", {
+      name: "Drag participant Customer to reorder",
+    }),
+  ).toBeInTheDocument();
+  expect(preview().querySelector("svg")!.outerHTML).toBe(diagram);
 });

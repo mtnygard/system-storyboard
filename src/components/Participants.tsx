@@ -1,5 +1,10 @@
+import {
+  useParticipantDrag,
+  participantDragId,
+  boundaryDragId,
+} from "./useParticipantDrag";
 import { useState } from "react";
-import { Plus, Search, ChevronRight } from "lucide-react";
+import { Plus, Search, ChevronRight, GripVertical } from "lucide-react";
 import {
   dimensions,
   newParticipant,
@@ -26,6 +31,7 @@ export function Participants({
 }) {
   const [search, setSearch] = useState("");
   const [name, setName] = useState("");
+  const rowDrag = useParticipantDrag(scenario, onChange, onSelect);
   const add = (id: string) =>
     onChange({
       ...scenario,
@@ -52,7 +58,8 @@ export function Participants({
         <div>
           <h2>Participants & boundaries</h2>
           <p>
-            Group responsibilities, then describe the connections between them.
+            Group responsibilities. Drag the handles to reorder participants or
+            move them between boundaries.
           </p>
         </div>
         <button
@@ -142,7 +149,12 @@ export function Participants({
       </div>
       <div className="boundary-grid">
         {scenario.boundaries.map((b, n) => (
-          <div className="boundary-card" key={b.id}>
+          <div
+            className={`boundary-card${rowDrag.target?.id === boundaryDragId(b.id) ? " drop-boundary" : ""}`}
+            key={b.id}
+            onDragOver={(event) => rowDrag.over(boundaryDragId(b.id), event)}
+            onDrop={(event) => rowDrag.drop(boundaryDragId(b.id), event)}
+          >
             <div className="boundary-top">
               <span className="eyebrow">Boundary {n + 1}</span>
               <div className="inline">
@@ -210,10 +222,55 @@ export function Participants({
               </select>
             </Field>
             <div className="placed-list">
+              {!scenario.participantPlacements.some(
+                (p) => p.boundaryId === b.id,
+              ) && (
+                <small className="empty-boundary">
+                  Drop a participant here.
+                </small>
+              )}
               {scenario.participantPlacements
                 .filter((p) => p.boundaryId === b.id)
                 .map((p, index, placements) => (
-                  <div className="placed-participant-row" key={p.participantId}>
+                  <div
+                    key={p.participantId}
+                    data-reorder-row
+                    className={[
+                      "placed-participant-row",
+                      rowDrag.draggingId === participantDragId(p.participantId)
+                        ? "dragging"
+                        : "",
+                      rowDrag.target?.id === participantDragId(p.participantId)
+                        ? `drop-${rowDrag.target.side}`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onDragOver={(event) =>
+                      rowDrag.over(participantDragId(p.participantId), event)
+                    }
+                    onDrop={(event) =>
+                      rowDrag.drop(participantDragId(p.participantId), event)
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="icon-button row-drag-handle"
+                      draggable={
+                        placements.length > 1 || scenario.boundaries.length > 1
+                      }
+                      disabled={
+                        placements.length < 2 && scenario.boundaries.length < 2
+                      }
+                      aria-label={`Drag participant ${catalog.find((c) => c.id === p.participantId)?.name || "Unnamed participant"} to reorder`}
+                      title="Drag to reorder or move to another boundary. Up/down buttons are also available."
+                      onDragStart={(event) =>
+                        rowDrag.start(participantDragId(p.participantId), event)
+                      }
+                      onDragEnd={rowDrag.finish}
+                    >
+                      <GripVertical size={16} />
+                    </button>
                     <button
                       className="placed-participant"
                       onClick={() => onSelect(p.participantId)}

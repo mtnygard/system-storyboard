@@ -911,6 +911,16 @@ button.secondary,
   flex-direction: column;
   gap: 5px;
 }
+.boundary-card.drop-boundary {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.empty-boundary {
+  padding: 16px 8px;
+  border: 1px dashed var(--line);
+  border-radius: 5px;
+  text-align: center;
+}
 .placed-participant-row {
   display: flex;
   align-items: center;
